@@ -4,55 +4,57 @@
 ![License MIT](https://img.shields.io/badge/license-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
 
-**Bulk download files from public Yandex Disk folders with one command.**
+**Скачивание файлов из Яндекс Диска по ссылкам, где прямое скачивание запрещено.**
 
-## What is this?
+[🇬🇧 English](README.en.md) | [🇩🇪 Deutsch](README.de.md) | [🇫🇷 Français](README.fr.md) | [🇯🇵 日本語](README.ja.md) | [🇹🇼 繁體中文](README.zh-TW.md)
 
-Yandex Disk is widely used for sharing conference recordings, lecture videos, online courses, and other large files. But there's no built-in way to download entire folders — you have to click each file individually, choose quality manually, and wait.
+## Что это?
 
-**yadisk-downloader** solves this: paste a public link, and it downloads all files at once with resolution control, smart conversion presets, and a modern GUI.
+Яндекс Диск широко используется для обмена записями конференций, лекциями, онлайн-курсами и другими файлами. Но часто авторы запрещают прямое скачивание — приходится кликать на каждый файл отдельно, выбирать качество вручную и ждать.
 
-## Features
+**yadisk-downloader** решает эту проблему: вставьте публичную ссылку, и инструмент скачает все файлы за один раз с выбором разрешения, умными пресетами конвертации и современным графическим интерфейсом.
 
-- **One-command bulk download** — paste a link, get all files
-- **All file types** — video, audio, images, documents, archives, executables
-- **Resolution control** — choose 240p, 360p, 480p, 720p, or 1080p
-- **9 conversion presets** — H.265, H.264, MP3, AAC, and more
-- **CLI + GUI** — automate with command line, or use the visual interface
-- **Folder filtering** — download specific folders only
-- **Type filtering** — download only specific file types
-- **Progress tracking** — see speed, ETA, and percentage for each file
-- **Resume support** — continue interrupted downloads automatically
-- **Checksum verification** — verify file integrity with MD5
-- **Download queue** — manage multiple URLs
-- **Scheduled downloads** — run downloads on a schedule (cron)
-- **Proxy support** — use HTTP/SOCKS proxy for downloads
-- **Config file** — save your settings for reuse
-- **Notifications** — system notification when download completes
-- **Skip existing** — won't re-download files you already have
-- **Cross-platform** — works on Windows, macOS, and Linux
+## Возможности
 
-## Quick Start
+- **Массовое скачивание одной командой** — вставьте ссылку, получите все файлы
+- **Все типы файлов** — видео, аудио, изображения, документы, архивы, исполняемые файлы
+- **Выбор разрешения** — 240p, 360p, 480p, 720p или 1080p
+- **9 пресетов конвертации** — H.265, H.264, MP3, AAC и другие
+- **CLI + GUI** — автоматизация через командную строку или графический интерфейс
+- **Фильтрация по папкам** — скачивание только определённых папок
+- **Фильтрация по типам** — скачивание только определённых типов файлов
+- **Отслеживание прогресса** — скорость, ETA и процент для каждого файла
+- **Возобновление скачивания** — продолжение прерванных загрузок
+- **Проверка целостности** — верификация файлов через MD5
+- **Очередь ссылок** — управление несколькими URL
+- **Расписание** — скачивание по расписанию (cron)
+- **Поддержка прокси** — HTTP/SOCKS прокси для скачивания
+- **Конфигурация** — сохранение настроек для повторного использования
+- **Уведомления** — системные уведомления по завершении
+- **Пропуск существующих** — не скачивает файлы заново
+- **Кроссплатформенность** — работает на Windows, macOS и Linux
+
+## Быстрый старт
 
 ```bash
-# Install
+# Установка
 pip install -r requirements.txt
 playwright install chromium
 
-# Download all files from a public link
+# Скачивание всех файлов по публичной ссылке
 python -m yadisk_downloader https://disk.yandex.ru/d/XXXXX
 ```
 
-That's it. Files will appear in `./downloads/` organized by folder.
+Готово. Файлы появятся в `./downloads/`, организованные по папкам.
 
-## Installation
+## Установка
 
-### Prerequisites
+### Требования
 
 - **Python 3.10+** — [python.org](https://python.org)
-- **ffmpeg** — needed for video download and conversion
+- **ffmpeg** — нужен для скачивания и конвертации видео
 
-### Install ffmpeg
+### Установка ffmpeg
 
 **Windows (winget):**
 ```bash
@@ -74,332 +76,206 @@ brew install ffmpeg
 sudo apt update && sudo apt install ffmpeg
 ```
 
-Alternatively, `imageio-ffmpeg` will be installed automatically and provides a bundled ffmpeg.
+Альтернативно, `imageio-ffmpeg` устанавливается автоматически и предоставляет встроенный ffmpeg.
 
-### Install yadisk-downloader
+### Установка yadisk-downloader
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-username/yadisk-downloader.git
+# Клонирование репозитория
+git clone https://github.com/retvil/yadisk-downloader.git
 cd yadisk-downloader
 
-# Install dependencies
+# Установка зависимостей
 pip install -r requirements.txt
 
-# Install Playwright browser (Chromium)
+# Установка браузера Playwright (Chromium)
 playwright install chromium
 ```
 
-Or install as a package:
+Или установка как пакета:
 
 ```bash
 pip install -e .
 playwright install chromium
 ```
 
-## Usage
+## Использование
 
 ### CLI
 
-#### Basic download
+#### Базовое скачивание
 
 ```bash
-# Download all files (default: 720p)
+# Скачать все файлы (по умолчанию: 720p)
 python -m yadisk_downloader https://disk.yandex.ru/d/XXXXX
 ```
 
-#### Choose resolution
+#### Выбор разрешения
 
 ```bash
-# Download at 1080p
+# Скачать в 1080p
 python -m yadisk_downloader https://disk.yandex.ru/d/XXXXX -r 1080p
 
-# Download at 240p (smallest files, save bandwidth)
+# Скачать в 240p (минимальный размер, экономия трафика)
 python -m yadisk_downloader https://disk.yandex.ru/d/XXXXX -r 240p
 ```
 
-If the selected resolution isn't available, the tool automatically falls back to 720p, then to the best available quality.
-
-#### Filter by folder
+#### Фильтрация по папкам
 
 ```bash
-# Download only one folder
+# Скачать только одну папку
 python -m yadisk_downloader https://disk.yandex.ru/d/XXXXX -f "Главный зал"
 ```
 
-#### Convert after download
+#### Конвертация после скачивания
 
 ```bash
-# Convert to H.265 (best quality, ~60% of original size)
+# Конвертация в H.265 (лучшее качество, ~60% от оригинала)
 python -m yadisk_downloader https://disk.yandex.ru/d/XXXXX --preset best
 
-# Optimize for YouTube upload (1080p H.264)
+# Оптимизация для YouTube (1080p H.264)
 python -m yadisk_downloader https://disk.yandex.ru/d/XXXXX --preset youtube
 
-# Extract audio only (MP3 320kbps)
+# Извлечение только аудио (MP3 320kbps)
 python -m yadisk_downloader https://disk.yandex.ru/d/XXXXX --preset mp3
 
-# Convert and delete original files
+# Конвертация и удаление оригиналов
 python -m yadisk_downloader https://disk.yandex.ru/d/XXXXX --preset compact --delete-original
 ```
 
-#### List files
+#### Просмотр файлов
 
 ```bash
-# Show all files without downloading
+# Показать все файлы без скачивания
 python -m yadisk_downloader https://disk.yandex.ru/d/XXXXX --list
 
-# Show available conversion presets
+# Показать доступные пресеты конвертации
 python -m yadisk_downloader --preset-list
 
-# Show available file types
+# Показать доступные типы файлов
 python -m yadisk_downloader --type-list
 ```
 
-#### Filter by file type
+#### Фильтрация по типам файлов
 
 ```bash
-# Download only video files
+# Скачать только видео
 python -m yadisk_downloader https://disk.yandex.ru/d/XXXXX --type video
 
-# Download video and documents
+# Скачать видео и документы
 python -m yadisk_downloader https://disk.yandex.ru/d/XXXXX --type video,document
 
-# Download everything except archives and executables
+# Скачать всё кроме архивов и исполняемых файлов
 python -m yadisk_downloader https://disk.yandex.ru/d/XXXXX --exclude archive,executable
 
-# Download only images
+# Скачать только изображения
 python -m yadisk_downloader https://disk.yandex.ru/d/XXXXX --type image
 ```
 
-Available file types: `video`, `audio`, `image`, `document`, `archive`, `executable`, `other`
+Доступные типы файлов: `video`, `audio`, `image`, `document`, `archive`, `executable`, `other`
 
-#### Custom output directory
+#### Произвольная папка вывода
 
 ```bash
 python -m yadisk_downloader https://disk.yandex.ru/d/XXXXX -o ./my_files
 ```
 
-#### Proxy support
+#### Поддержка прокси
 
 ```bash
-# Use HTTP proxy
+# Использовать HTTP прокси
 python -m yadisk_downloader https://disk.yandex.ru/d/XXXXX --proxy http://proxy:8080
 
-# Use SOCKS proxy
+# Использовать SOCKS прокси
 python -m yadisk_downloader https://disk.yandex.ru/d/XXXXX --proxy socks5://proxy:1080
 ```
 
-#### Notifications
+#### Уведомления
 
 ```bash
-# Get system notification when download completes
+# Системное уведомление по завершении скачивания
 python -m yadisk_downloader https://disk.yandex.ru/d/XXXXX --notify
 ```
 
-#### Configuration file
+#### Файл конфигурации
 
 ```bash
-# Save current settings as defaults
+# Сохранить текущие настройки
 python -m yadisk_downloader --save-config -r 1080p --notify --proxy http://proxy:8080
 
-# Show current configuration
+# Показать текущую конфигурацию
 python -m yadisk_downloader --show-config
 
-# Use custom config file
+# Использовать произвольный конфиг
 python -m yadisk_downloader https://disk.yandex.ru/d/XXXXX --config ./my-config.json
 ```
 
-Config file location: `~/.yadisk-downloader/config.json`
+Расположение файла конфигурации: `~/.yadisk-downloader/config.json`
 
-#### Resume interrupted downloads
-
-Downloads are automatically resumed if interrupted. The tool tracks download state and continues from where it left off.
+#### Возобновление прерванных скачиваний
 
 ```bash
-# Disable resume (re-download from scratch)
+# Отключить возобновление
 python -m yadisk_downloader https://disk.yandex.ru/d/XXXXX --no-resume
 
-# Clear download state for a URL
+# Очистить состояние для URL
 python -m yadisk_downloader https://disk.yandex.ru/d/XXXXX --clear-state
-
-# Clear all download states
-python -m yadisk_downloader --clear-state
 ```
 
-#### Checksum verification
-
-Verify file integrity after download using MD5 checksums.
+#### Проверка целостности
 
 ```bash
-# Download with checksum verification
+# Скачивание с проверкой целостности
 python -m yadisk_downloader https://disk.yandex.ru/d/XXXXX --checksum
 ```
 
-#### Download queue
-
-Manage multiple URLs in a queue.
+#### Очередь ссылок
 
 ```bash
-# Add URLs to queue
+# Добавить URL в очередь
 python -m yadisk_downloader --queue-add https://disk.yandex.ru/d/XXXXX
 python -m yadisk_downloader --queue-add https://disk.yandex.ru/d/YYYYY
 
-# Show queue
+# Показать очередь
 python -m yadisk_downloader --queue-show
 
-# Process all items in queue
+# Обработать все элементы очереди
 python -m yadisk_downloader --queue-process
-
-# Remove from queue
-python -m yadisk_downloader --queue-remove https://disk.yandex.ru/d/XXXXX
-
-# Clear queue
-python -m yadisk_downloader --queue-clear
 ```
 
-#### Scheduled downloads
-
-Run downloads on a schedule using cron expressions.
+#### Расписание скачиваний
 
 ```bash
-# Add scheduled download (every day at 9 AM)
+# Добавить запланированное скачивание (каждый день в 9:00)
 python -m yadisk_downloader --schedule-add https://disk.yandex.ru/d/XXXXX --cron "0 9 * * *"
 
-# Add scheduled download (every Monday at 10 AM)
-python -m yadisk_downloader --schedule-add https://disk.yandex.ru/d/XXXXX --cron "0 10 * * 1"
-
-# Show scheduled downloads
+# Показать запланированные скачивания
 python -m yadisk_downloader --schedule-show
 
-# Run scheduler (processes due downloads)
+# Запустить планировщик
 python -m yadisk_downloader --schedule-run
-
-# Remove schedule
-python -m yadisk_downloader --schedule-remove https://disk.yandex.ru/d/XXXXX
 ```
 
-Cron format: `minute hour day month weekday`
-
-### GUI Mode
-
-Launch the modern visual interface:
+### GUI режим
 
 ```bash
 python -m yadisk_downloader --gui
 ```
 
-**How it works:**
-1. Paste the public Yandex Disk link
-2. Click **Scan** to load the file list
-3. Select resolution, folder, and conversion preset
-4. Check/uncheck individual files
-5. Click **Download Selected**
+## Пресеты конвертации
 
-The GUI features:
-- Modern dark/light theme (auto-detects system settings)
-- Progress bar with status updates
-- Checkbox list for selective download
-- Folder dropdown (populated after scan)
-- Resolution radio buttons
-- Conversion preset selector
+| Пресет | Кодек | Разрешение | Аудио | Размер | Назначение |
+|--------|-------|------------|-------|--------|------------|
+| `best` | H.265 | Оригинал | AAC 192k | ~60% | Архивирование, максимальное качество |
+| `balanced` | H.264 | Оригинал | AAC 128k | ~70% | Общее использование |
+| `compact` | H.264 | 480p | AAC 96k | ~30% | Мобильные устройства |
+| `youtube` | H.264 | 1080p | AAC 192k | ~80% | YouTube/соцсети |
+| `mobile` | H.264 | 360p | AAC 64k | ~20% | Телефоны |
+| `mp3` | — | — | MP3 320k | ~5% | Подкасты |
+| `mp3-small` | — | — | MP3 128k | ~3% | Голос |
+| `aac` | — | — | AAC 256k | ~5% | Современный аудиоформат |
+| `remux` | Copy | Copy | Copy | ~100% | Смена формата |
 
-## Conversion Presets
+## Лицензия
 
-| Preset | Codec | Resolution | Audio | Size | Best for |
-|--------|-------|------------|-------|------|----------|
-| `best` | H.265 | Original | AAC 192k | ~60% | Archiving, maximum quality |
-| `balanced` | H.264 | Original | AAC 128k | ~70% | General use, good compatibility |
-| `compact` | H.264 | 480p | AAC 96k | ~30% | Mobile, limited storage |
-| `youtube` | H.264 | 1080p | AAC 192k | ~80% | YouTube/social media upload |
-| `mobile` | H.264 | 360p | AAC 64k | ~20% | Phones, slow connections |
-| `mp3` | — | — | MP3 320k | ~5% | Podcasts, music extraction |
-| `mp3-small` | — | — | MP3 128k | ~3% | Voice, small audio files |
-| `aac` | — | — | AAC 256k | ~5% | Modern audio format |
-| `remux` | Copy | Copy | Copy | ~100% | Format change (MKV→MP4), no re-encode |
-
-**Note:** "Size" shows approximate output size relative to the original file.
-
-## CLI Reference
-
-| Argument | Short | Description | Default |
-|----------|-------|-------------|---------|
-| `url` | — | Yandex Disk public link | *(required)* |
-| `--resolution` | `-r` | Video download resolution: 240p, 360p, 480p, 720p, 1080p | `720p` |
-| `--folder` | `-f` | Download specific folder only | All folders |
-| `--output` | `-o` | Output directory | `./downloads` |
-| `--workers` | `-w` | Parallel download workers | `4` |
-| `--type` | `-t` | File types to download (comma-separated) | All types |
-| `--exclude` | — | File types to exclude (comma-separated) | None |
-| `--proxy` | — | Proxy URL (HTTP/SOCKS) | None |
-| `--notify` | — | Send system notification on completion | `false` |
-| `--config` | — | Path to config file | `~/.yadisk-downloader/config.json` |
-| `--preset` | — | Conversion preset for video | *(no conversion)* |
-| `--preset-list` | — | Show available presets | — |
-| `--type-list` | — | Show available file types | — |
-| `--show-config` | — | Show current configuration | — |
-| `--save-config` | — | Save current CLI args as defaults | — |
-| `--delete-original` | — | Delete original video after conversion | `false` |
-| `--no-resume` | — | Disable resume support | `false` |
-| `--checksum` | — | Compute MD5 checksum after download | `false` |
-| `--clear-state` | — | Clear download state | — |
-| `--queue-add` | — | Add URL to download queue | — |
-| `--queue-remove` | — | Remove URL from queue | — |
-| `--queue-show` | — | Show download queue | — |
-| `--queue-clear` | — | Clear download queue | — |
-| `--queue-process` | — | Process all items in queue | — |
-| `--schedule-add` | — | Add scheduled download | — |
-| `--cron` | — | Cron expression for schedule | — |
-| `--schedule-remove` | — | Remove scheduled download | — |
-| `--schedule-show` | — | Show scheduled downloads | — |
-| `--schedule-run` | — | Run scheduler | — |
-| `--list` | — | List files without downloading | `false` |
-| `--gui` | — | Launch GUI mode | `false` |
-
-## How It Works
-
-1. **File discovery** — Uses the Yandex Disk public API to list all files in the shared folder (no authentication needed for public links)
-2. **Download strategy** — Tries API direct download first (fast, reliable), falls back to Playwright browser download if API fails
-3. **Video optimization** — For video files, intercepts HLS m3u8 streams and downloads via ffmpeg for best quality
-4. **Conversion** (optional) — Re-encodes video files using ffmpeg with the selected preset
-
-## Troubleshooting
-
-### "ffmpeg not found"
-
-ffmpeg must be in your system PATH. Install it using the instructions in [Installation](#install-ffmpeg), or install `imageio-ffmpeg`:
-
-```bash
-pip install imageio-ffmpeg
-```
-
-### "Playwright browser not installed"
-
-Run:
-```bash
-playwright install chromium
-```
-
-### Network errors / timeouts
-
-- Check your internet connection
-- The Yandex Disk public link may have expired
-- Try again later — Yandex may rate-limit heavy usage
-
-### Low disk space
-
-Files can be large (1-4 GB each). Use `-r 240p` to download smaller versions, or `--preset compact` to convert after download.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+MIT License — см. файл [LICENSE](LICENSE).
