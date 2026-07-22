@@ -29,3 +29,7 @@ venv/
 *~
 .mypy_cache/
 .pytest_cache/
+*.spec
+releases/
+yadisk-downloader-portable/
+yadisk-downloader.exe
