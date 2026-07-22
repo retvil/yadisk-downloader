@@ -318,7 +318,7 @@ def _run_download(args, config: Config):
         ft = f.get("file_type", "other")
         file_start = time.time()
 
-        print(f"\n  [{i}/{len(pending)}] {f['name'][:60]} ({format_size(f['size'])}) [{ft}]")
+        print(f"\n  [{i}/{len(pending)}] {dest} ({format_size(f['size'])}) [{ft}]")
 
         # Update state
         state.update_file(f["path"], name=f["name"], size=f["size"], status="downloading")

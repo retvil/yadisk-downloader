@@ -44,6 +44,8 @@ if ctk is not None:
             ctk.CTkLabel(link_frame, text="Public link:").pack(side="left", padx=(0, 5))
             self.link_entry = ctk.CTkEntry(link_frame, placeholder_text="https://disk.yandex.ru/d/...")
             self.link_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
+            self.link_entry.bind("<Control-v>", self._paste_from_clipboard)
+            self.link_entry.bind("<Button-3>", self._show_context_menu)
             self.scan_btn = ctk.CTkButton(link_frame, text="Scan", width=80, command=self._scan)
             self.scan_btn.pack(side="right")
 
@@ -103,6 +105,26 @@ if ctk is not None:
             self.progress = ctk.CTkProgressBar(main)
             self.progress.pack(fill="x", pady=(5, 0))
             self.progress.set(0)
+
+        def _paste_from_clipboard(self, event=None):
+            try:
+                text = self.clipboard_get()
+                self.link_entry.delete(0, "end")
+                self.link_entry.insert(0, text)
+            except Exception:
+                pass
+
+        def _show_context_menu(self, event):
+            menu = tk.Menu(self, tearoff=0)
+            menu.add_command(label="Cut", command=lambda: self.link_entry.event_generate("<<Cut>>"))
+            menu.add_command(label="Copy", command=lambda: self.link_entry.event_generate("<<Copy>>"))
+            menu.add_command(label="Paste", command=self._paste_from_clipboard)
+            menu.add_separator()
+            menu.add_command(label="Select All", command=lambda: self.link_entry.event_generate("<<SelectAll>>"))
+            try:
+                menu.tk_popup(event.x_root, event.y_root)
+            finally:
+                menu.grab_release()
 
         def _browse_output(self):
             path = filedialog.askdirectory()
