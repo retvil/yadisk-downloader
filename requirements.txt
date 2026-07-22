@@ -2,3 +2,6 @@ playwright>=1.40.0
 requests>=2.31.0
 imageio-ffmpeg>=0.4.9
 customtkinter>=5.2.0
+
+# Build dependencies (optional)
+pyinstaller>=6.0.0

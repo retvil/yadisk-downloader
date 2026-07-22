@@ -34,6 +34,16 @@
 - **Пропуск существующих** — не скачивает файлы заново
 - **Кроссплатформенность** — работает на Windows, macOS и Linux
 
+## Готовые сборки
+
+Скачайте готовую сборку для вашей ОС из [Releases](https://github.com/retvil/yadisk-downloader/releases):
+
+- **Windows** — `yadisk-downloader-windows.zip` (portable)
+- **macOS** — `yadisk-downloader-macos.zip`
+- **Linux** — `yadisk-downloader-linux.zip`
+
+При первом запуске программа предложит скачать Chromium (~200MB) — это нужно для скачивания файлов.
+
 ## Быстрый старт
 
 ```bash
@@ -275,6 +285,27 @@ python -m yadisk_downloader --gui
 | `mp3-small` | — | — | MP3 128k | ~3% | Голос |
 | `aac` | — | — | AAC 256k | ~5% | Современный аудиоформат |
 | `remux` | Copy | Copy | Copy | ~100% | Смена формата |
+
+## Сборка
+
+Для разработчиков — сборка самостоятельно:
+
+```bash
+# Установить зависимости для сборки
+pip install pyinstaller imageio-ffmpeg
+
+# Собрать для текущей ОС
+python build.py
+
+# Собрать для конкретной платформы
+python build.py --platform windows
+python build.py --platform macos
+python build.py --platform linux
+```
+
+Результаты сборки появятся в папке `releases/`.
+
+Автоматическая сборка также настроена через GitHub Actions — при пуше тега `v*` сборки создаются автоматически.
 
 ## Лицензия
 
