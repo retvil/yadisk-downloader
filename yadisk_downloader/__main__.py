@@ -1,5 +1,6 @@
 """Entry point for python -m yadisk_downloader."""
 
+import os
 import sys
 
 
@@ -15,7 +16,10 @@ def check_chromium():
             print("Chromium browser is required for downloading files.")
             print("It will be downloaded automatically (~200MB).")
             print()
-            response = input("Install Chromium now? (y/n): ").strip().lower()
+            try:
+                response = input("Install Chromium now? (y/n): ").strip().lower()
+            except EOFError:
+                return
             if response == "y":
                 success = run_setup_if_needed()
                 if not success:
@@ -25,14 +29,20 @@ def check_chromium():
                 print("Skipping Chromium installation.")
                 print("You can install it later with: playwright install chromium")
             print()
-    except ImportError:
+    except (ImportError, Exception):
         pass
 
 
 def main():
     """Main entry point."""
-    # Check for GUI mode
-    if len(sys.argv) == 1 or "--gui" in sys.argv:
+    # Add the package directory to path for bundled exe
+    if getattr(sys, 'frozen', False):
+        package_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
+        if package_dir not in sys.path:
+            sys.path.insert(0, package_dir)
+
+    # Only check Chromium for GUI mode (no arguments)
+    if len(sys.argv) == 1:
         check_chromium()
 
     from .cli import main as cli_main

@@ -61,7 +61,7 @@ def build_windows():
         "--hidden-import=yadisk_downloader",
         "--collect-all=customtkinter",
         "--collect-all=imageio_ffmpeg",
-        str(ROOT / "yadisk_downloader" / "__main__.py"),
+        str(ROOT / "run.py"),
     ]
 
     print("Running PyInstaller...")
@@ -97,7 +97,7 @@ def build_macos():
         "--hidden-import=playwright",
         "--collect-all=customtkinter",
         "--collect-all=imageio_ffmpeg",
-        str(ROOT / "yadisk_downloader" / "__main__.py"),
+        str(ROOT / "run.py"),
     ]
 
     print("Running PyInstaller...")
@@ -132,7 +132,7 @@ def build_linux():
         "--hidden-import=playwright",
         "--collect-all=customtkinter",
         "--collect-all=imageio_ffmpeg",
-        str(ROOT / "yadisk_downloader" / "__main__.py"),
+        str(ROOT / "run.py"),
     ]
 
     print("Running PyInstaller...")
