@@ -7,7 +7,7 @@ import sys
 def check_chromium():
     """Check if Chromium is installed, offer to install if not."""
     try:
-        from .setup_wizard import is_chromium_installed, run_setup_if_needed
+        from yadisk_downloader.setup_wizard import is_chromium_installed, run_setup_if_needed
         if not is_chromium_installed():
             print("=" * 60)
             print("yadisk-downloader - First Run Setup")
@@ -45,7 +45,7 @@ def main():
     if len(sys.argv) == 1:
         check_chromium()
 
-    from .cli import main as cli_main
+    from yadisk_downloader.cli import main as cli_main
     cli_main()
 
 
