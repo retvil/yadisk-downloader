@@ -10,7 +10,7 @@
 
 ## Qu'est-ce que c'est ?
 
-Yandex Disk est utilisé pour partager des enregistrements, des cours et d'autres fichiers. Mais les auteurs désactivent souvent le téléchargement direct.
+Yandex Disk est utilisé pour partager des enregistrements, des cours et d'autres fichiers. Mais les auteurs désactivent souvent complètement le téléchargement — pas de bouton télécharger, pas de moyen de sauvegarder les fichiers.
 
 **yadisk-downloader** résout ce problème : collez un lien public, et l'outil télécharge tous les fichiers en une fois.
 

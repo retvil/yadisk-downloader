@@ -10,7 +10,7 @@
 
 ## What is this?
 
-Yandex Disk is widely used for sharing conference recordings, lectures, online courses, and other files. But often authors disable direct download — you have to click each file individually, choose quality manually, and wait.
+Yandex Disk is widely used for sharing conference recordings, lectures, online courses, and other files. But often authors completely disable downloading — no download button, no way to save files, no chance to get the data.
 
 **yadisk-downloader** solves this: paste a public link, and the tool downloads all files at once with resolution control, smart conversion presets, and a modern GUI.
 

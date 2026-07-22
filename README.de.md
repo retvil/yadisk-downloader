@@ -10,7 +10,7 @@
 
 ## Was ist das?
 
-Yandex Disk wird zum Teilen von Konferenzaufzeichnungen, Vorlesungen und anderen Dateien verwendet. Aber oft deaktivieren Autoren den direkten Download.
+Yandex Disk wird zum Teilen von Konferenzaufzeichnungen, Vorlesungen und anderen Dateien verwendet. Aber oft deaktivieren Autoren den Download vollständig — kein Download-Button, keine Möglichkeit, Dateien zu speichern.
 
 **yadisk-downloader** löst das Problem: Fügen Sie einen öffentlichen Link ein, und das Tool lädt alle Dateien auf einmal herunter.
 
