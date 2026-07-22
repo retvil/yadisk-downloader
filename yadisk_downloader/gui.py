@@ -65,6 +65,8 @@ if ctk is not None:
             self.output_entry = ctk.CTkEntry(out_frame, placeholder_text="./downloads")
             self.output_entry.insert(0, "./downloads")
             self.output_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
+            self.output_var = ctk.StringVar(value="./downloads")
+            self.output_var.trace_add("write", self._update_path_preview)
             ctk.CTkButton(out_frame, text="...", width=35, command=self._browse_output).pack(side="right")
 
             row2 = ctk.CTkFrame(main, fg_color="transparent")
@@ -100,11 +102,17 @@ if ctk is not None:
             self.file_scroll = ctk.CTkScrollableFrame(list_frame)
             self.file_scroll.pack(fill="both", expand=True)
 
+            self.path_label = ctk.CTkLabel(main, text="Output: ./downloads/<folder>/filename.mp4", anchor="w", text_color="gray")
+            self.path_label.pack(fill="x")
             self.status_label = ctk.CTkLabel(main, text="Ready", anchor="w")
             self.status_label.pack(fill="x")
             self.progress = ctk.CTkProgressBar(main)
             self.progress.pack(fill="x", pady=(5, 0))
             self.progress.set(0)
+
+        def _update_path_preview(self, *args):
+            output = self.output_entry.get().strip() or "./downloads"
+            self.path_label.configure(text=f"Output: {output}/<folder>/filename.mp4")
 
         def _paste_from_clipboard(self, event=None):
             try:
@@ -131,6 +139,7 @@ if ctk is not None:
             if path:
                 self.output_entry.delete(0, "end")
                 self.output_entry.insert(0, path)
+                self.output_var.set(path)
 
         def _scan(self):
             url = self.link_entry.get().strip()
@@ -162,8 +171,10 @@ if ctk is not None:
 
             for f in self.files:
                 size = format_size(f["size"]) if f["size"] else "?"
+                folder = f["folder"]
+                display = f"[{folder}] {f['name']}  ({size})" if folder else f"{f['name']}  ({size})"
                 var = ctk.BooleanVar(value=True)
-                cb = ctk.CTkCheckBox(self.file_scroll, text=f"{f['name']}  ({size})", variable=var)
+                cb = ctk.CTkCheckBox(self.file_scroll, text=display, variable=var)
                 cb.pack(fill="x", anchor="w", padx=5, pady=2)
                 cb.file_data = f
                 cb.var = var
