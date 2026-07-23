@@ -28,13 +28,15 @@ jobs:
             --name=yadisk-downloader `
             --windowed `
             --onedir `
+            --icon=yadisk_downloader/assets/icon.ico `
             --hidden-import=customtkinter `
             --hidden-import=requests `
             --hidden-import=playwright `
             --hidden-import=yadisk_downloader `
             --collect-all=customtkinter `
             --collect-all=imageio_ffmpeg `
-            yadisk_downloader/__main__.py
+            --add-data="yadisk_downloader/assets;yadisk_downloader/assets" `
+            run.py
       
       - name: Create portable zip
         run: |
@@ -73,7 +75,8 @@ jobs:
             --hidden-import=playwright \
             --collect-all=customtkinter \
             --collect-all=imageio_ffmpeg \
-            yadisk_downloader/__main__.py
+            --add-data="yadisk_downloader/assets:yadisk_downloader/assets" \
+            run.py
       
       - name: Create zip
         run: |
@@ -111,7 +114,8 @@ jobs:
             --hidden-import=playwright \
             --collect-all=customtkinter \
             --collect-all=imageio_ffmpeg \
-            yadisk_downloader/__main__.py
+            --add-data="yadisk_downloader/assets:yadisk_downloader/assets" \
+            run.py
       
       - name: Create zip
         run: |
