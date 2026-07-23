@@ -33,3 +33,4 @@ venv/
 releases/
 yadisk-downloader-portable/
 yadisk-downloader.exe
+gui_screenshot*.png
