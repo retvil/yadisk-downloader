@@ -16,7 +16,8 @@ ROOT = Path(__file__).parent
 DIST = ROOT / "dist"
 BUILD = ROOT / "build"
 RELEASES = ROOT / "releases"
-VERSION = "1.0.0"
+VERSION = "1.1.0"
+ICON = ROOT / "yadisk_downloader" / "assets" / "icon.ico"
 
 
 def clean():
@@ -51,7 +52,7 @@ def build_windows():
         "--name=yadisk-downloader",
         "--windowed",  # No console window
         "--onedir",  # Create a folder
-        "--icon=NONE",  # Add icon later
+        f"--icon={ICON}",
         f"--distpath={DIST / 'windows'}",
         f"--workpath={BUILD / 'windows'}",
         f"--specpath={ROOT}",
@@ -89,6 +90,7 @@ def build_macos():
         "--name=yadisk-downloader",
         "--windowed",
         "--onedir",
+        f"--icon={ICON.with_suffix('.icns')}",
         f"--distpath={DIST / 'macos'}",
         f"--workpath={BUILD / 'macos'}",
         f"--specpath={ROOT}",
