@@ -366,6 +366,13 @@ def _run_download(args, config: Config):
             # Docviewer fallback for all non-video types when API fails
             if not ok_dl and ft != "video":
                 print(f"    API failed, trying docviewer fallback...")
+                # Rename output to .pdf since docviewer always saves as PDF
+                base, ext = os.path.splitext(dest)
+                if ext.lower() != ".pdf":
+                    dest_pdf = base + ".pdf"
+                    print(f"    Note: file will be saved as PDF (original format not available without download permission)")
+                else:
+                    dest_pdf = dest
                 try:
                     from playwright.sync_api import sync_playwright
                     with sync_playwright() as pw:
@@ -373,11 +380,11 @@ def _run_download(args, config: Config):
                         ctx = browser.new_context()
                         page = ctx.new_page()
                         ok_dl, size = download_via_docviewer(
-                            page, args.url, f["path"], dest, file_type=ft
+                            page, args.url, f["path"], dest_pdf, file_type=ft
                         )
                         browser.close()
                     if ok_dl:
-                        print(f"    Downloaded via docviewer")
+                        print(f"    Downloaded as PDF: {os.path.basename(dest_pdf)}")
                 except Exception as e:
                     print(f"    Docviewer fallback failed: {e}")
 
