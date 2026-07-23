@@ -116,9 +116,10 @@ if ctk is not None:
 
         def _paste_from_clipboard(self, event=None):
             try:
-                text = self.clipboard_get()
                 self.link_entry.delete(0, "end")
+                text = self.clipboard_get()
                 self.link_entry.insert(0, text)
+                return "break"
             except Exception:
                 pass
 
