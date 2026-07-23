@@ -44,7 +44,9 @@ if ctk is not None:
             ctk.CTkLabel(link_frame, text="Public link:").pack(side="left", padx=(0, 5))
             self.link_entry = ctk.CTkEntry(link_frame, placeholder_text="https://disk.yandex.ru/d/...")
             self.link_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
+            self.link_entry.bind("<Control-v>", self._paste_from_clipboard)
             self.link_entry.bind("<Button-3>", self._show_context_menu)
+            self.link_entry.bind("<Key>", self._on_key)
             self.scan_btn = ctk.CTkButton(link_frame, text="Scan", width=80, command=self._scan)
             self.scan_btn.pack(side="right")
 

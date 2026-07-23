@@ -161,6 +161,81 @@ def download_from_api(
                 return False, 0
 
 
+def download_via_docviewer(
+    page,
+    public_key: str,
+    file_path: str,
+    output_path: str,
+    timeout: int = 60,
+) -> tuple[bool, int]:
+    """Download a document (PDF, etc.) via Yandex docviewer rendering.
+
+    Opens the file in docviewer, waits for it to render, then uses
+    page.pdf() to save the rendered content as a valid PDF file.
+
+    Args:
+        page: Playwright page object (must already be on a page or new page).
+        public_key: Yandex Disk public folder URL.
+        file_path: Path to file on Yandex Disk (e.g. "/file.pdf").
+        output_path: Destination file path.
+        timeout: Max seconds to wait for rendering.
+
+    Returns:
+        Tuple of (success, file_size_bytes).
+    """
+    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+
+    try:
+        # Step 1: Load the folder page to get store-prefetch data
+        page.goto(public_key, wait_until="domcontentloaded", timeout=30000)
+        time.sleep(3)
+
+        # Step 2: Extract dvSearch URL for the target file
+        dv_search = page.evaluate("""(filePath) => {
+            const script = document.getElementById('store-prefetch');
+            if (!script) return null;
+            const data = JSON.parse(script.textContent);
+            const resources = data.resources || {};
+            const root = resources[data.rootResourceId];
+            if (!root) return null;
+            for (const childId of (root.children || [])) {
+                const child = resources[childId];
+                if (child && child.path && child.path.includes(filePath)) {
+                    return child.dvSearch || null;
+                }
+            }
+            return null;
+        }""", file_path)
+
+        if not dv_search:
+            return False, 0
+
+        # Step 3: Navigate to docviewer
+        dv_url = f"https://docviewer.yandex.ru{dv_search}"
+        page.goto(dv_url, wait_until="domcontentloaded", timeout=30000)
+
+        # Step 4: Wait for rendering — check for htmlimage (docviewer renders pages as PNGs)
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            has_image = page.evaluate("""() => {
+                return document.querySelectorAll('img[src*="htmlimage"]').length > 0;
+            }""")
+            if has_image:
+                time.sleep(2)  # Extra time for full render
+                break
+            time.sleep(1)
+
+        # Step 5: Save as PDF via page.pdf()
+        page.pdf(path=output_path, print_background=True)
+
+        if os.path.exists(output_path) and os.path.getsize(output_path) > 1000:
+            return True, os.path.getsize(output_path)
+        return False, 0
+
+    except Exception:
+        return False, 0
+
+
 def download_via_browser(
     page,
     file_url: str,

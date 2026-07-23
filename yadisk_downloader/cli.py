@@ -10,7 +10,7 @@ from .config import Config, get_config_path
 from .core.api import get_download_url, list_files
 from .core.browser import collect_m3u8_urls
 from .core.converter import PRESETS, convert, get_output_path, list_presets
-from .core.downloader import download_from_api, download_hls, compute_checksum, verify_checksum
+from .core.downloader import download_from_api, download_hls, download_via_docviewer, compute_checksum, verify_checksum
 from .core.file_types import list_types
 from .notify import notify_download_complete
 from .queue import DownloadQueue
@@ -356,12 +356,30 @@ def _run_download(args, config: Config):
                     print()  # New line after progress
 
         else:
-            # For non-video: API first
+            # For non-video: API first, then docviewer fallback
             print(f"    Downloading via API...")
             download_url = get_download_url(args.url, f["path"])
             if download_url:
                 ok_dl, size = download_from_api(download_url, dest, proxy, progress, resume)
                 print()  # New line after progress
+
+            # Docviewer fallback for documents when API fails
+            if not ok_dl and ft in ("document", "image"):
+                print(f"    API failed, trying docviewer fallback...")
+                try:
+                    from playwright.sync_api import sync_playwright
+                    with sync_playwright() as pw:
+                        browser = pw.chromium.launch(headless=True)
+                        ctx = browser.new_context()
+                        page = ctx.new_page()
+                        ok_dl, size = download_via_docviewer(
+                            page, args.url, f["path"], dest
+                        )
+                        browser.close()
+                    if ok_dl:
+                        print(f"    Downloaded via docviewer")
+                except Exception as e:
+                    print(f"    Docviewer fallback failed: {e}")
 
         if ok_dl:
             elapsed = time.time() - file_start
