@@ -19,6 +19,31 @@ from .state import DownloadState, get_state_file
 from .utils import find_ffmpeg, format_size
 
 
+def _show_pdf_only_warning(original_name: str, pdf_name: str):
+    """Show a popup warning that the file will be saved as PDF only."""
+    import threading
+
+    def _popup():
+        try:
+            import tkinter as tk
+            from tkinter import messagebox
+            root = tk.Tk()
+            root.withdraw()
+            root.attributes("-topmost", True)
+            messagebox.showwarning(
+                "PDF only",
+                f"File: {original_name}\n\n"
+                f"The owner has disabled downloading.\n"
+                f"The file will be saved as PDF:\n{pdf_name}\n\n"
+                f"Original format is not available.",
+            )
+            root.destroy()
+        except Exception:
+            print(f"    Note: {original_name} will be saved as PDF (original format not available)")
+
+    threading.Thread(target=_popup, daemon=True).start()
+
+
 def _print_preset_list():
     print(list_presets())
 
@@ -370,7 +395,7 @@ def _run_download(args, config: Config):
                 base, ext = os.path.splitext(dest)
                 if ext.lower() != ".pdf":
                     dest_pdf = base + ".pdf"
-                    print(f"    Note: file will be saved as PDF (original format not available without download permission)")
+                    _show_pdf_only_warning(f["name"], os.path.basename(dest_pdf))
                 else:
                     dest_pdf = dest
                 try:
