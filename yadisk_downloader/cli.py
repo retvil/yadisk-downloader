@@ -363,8 +363,8 @@ def _run_download(args, config: Config):
                 ok_dl, size = download_from_api(download_url, dest, proxy, progress, resume)
                 print()  # New line after progress
 
-            # Docviewer fallback for documents when API fails
-            if not ok_dl and ft in ("document", "image"):
+            # Docviewer fallback for all non-video types when API fails
+            if not ok_dl and ft != "video":
                 print(f"    API failed, trying docviewer fallback...")
                 try:
                     from playwright.sync_api import sync_playwright
@@ -373,7 +373,7 @@ def _run_download(args, config: Config):
                         ctx = browser.new_context()
                         page = ctx.new_page()
                         ok_dl, size = download_via_docviewer(
-                            page, args.url, f["path"], dest
+                            page, args.url, f["path"], dest, file_type=ft
                         )
                         browser.close()
                     if ok_dl:

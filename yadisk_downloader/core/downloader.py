@@ -166,18 +166,21 @@ def download_via_docviewer(
     public_key: str,
     file_path: str,
     output_path: str,
+    file_type: str = "document",
     timeout: int = 60,
 ) -> tuple[bool, int]:
-    """Download a document (PDF, etc.) via Yandex docviewer rendering.
+    """Download any file via Yandex docviewer rendering.
 
-    Opens the file in docviewer, waits for it to render, then uses
-    page.pdf() to save the rendered content as a valid PDF file.
+    Opens the file in docviewer, waits for it to render, then captures
+    the rendered content. For images, downloads the high-res PNG directly.
+    For documents, saves via page.pdf().
 
     Args:
-        page: Playwright page object (must already be on a page or new page).
+        page: Playwright page object.
         public_key: Yandex Disk public folder URL.
-        file_path: Path to file on Yandex Disk (e.g. "/file.pdf").
+        file_path: Path to file on Yandex Disk (e.g. "/subfolder/file.pdf").
         output_path: Destination file path.
+        file_type: File type category (document, image, etc.).
         timeout: Max seconds to wait for rendering.
 
     Returns:
@@ -190,18 +193,16 @@ def download_via_docviewer(
         page.goto(public_key, wait_until="domcontentloaded", timeout=30000)
         time.sleep(3)
 
-        # Step 2: Extract dvSearch URL for the target file
+        # Step 2: Extract dvSearch URL — search all resources recursively
         dv_search = page.evaluate("""(filePath) => {
             const script = document.getElementById('store-prefetch');
             if (!script) return null;
             const data = JSON.parse(script.textContent);
             const resources = data.resources || {};
-            const root = resources[data.rootResourceId];
-            if (!root) return null;
-            for (const childId of (root.children || [])) {
-                const child = resources[childId];
-                if (child && child.path && child.path.includes(filePath)) {
-                    return child.dvSearch || null;
+            // Search all resources (not just root children)
+            for (const [id, res] of Object.entries(resources)) {
+                if (res.path && res.path.includes(filePath) && res.dvSearch) {
+                    return res.dvSearch;
                 }
             }
             return null;
@@ -214,21 +215,42 @@ def download_via_docviewer(
         dv_url = f"https://docviewer.yandex.ru{dv_search}"
         page.goto(dv_url, wait_until="domcontentloaded", timeout=30000)
 
-        # Step 4: Wait for rendering — check for htmlimage (docviewer renders pages as PNGs)
+        # Step 4: Wait for rendering
         deadline = time.time() + timeout
         while time.time() < deadline:
-            has_image = page.evaluate("""() => {
-                return document.querySelectorAll('img[src*="htmlimage"]').length > 0;
+            has_content = page.evaluate("""() => {
+                // Check for rendered images (docviewer renders pages as PNGs)
+                const imgs = document.querySelectorAll('img[src*="htmlimage"]');
+                if (imgs.length > 0) return 'htmlimage';
+                // Check for direct image rendering
+                const directImgs = document.querySelectorAll('img[src*="downloader.disk"], img[src*="preview"]');
+                if (directImgs.length > 0) return 'direct_image';
+                return null;
             }""")
-            if has_image:
-                time.sleep(2)  # Extra time for full render
+            if has_content:
+                time.sleep(2)
                 break
             time.sleep(1)
 
-        # Step 5: Save as PDF via page.pdf()
-        page.pdf(path=output_path, print_background=True)
+        # Step 5: Save content based on type
+        if file_type == "image":
+            # For images: download the rendered PNG from docviewer's htmlimage endpoint
+            img_url = page.evaluate("""() => {
+                const img = document.querySelector('img[src*="htmlimage"]');
+                return img ? img.src : null;
+            }""")
+            if img_url:
+                import urllib.request
+                urllib.request.urlretrieve(img_url, output_path)
+                if os.path.exists(output_path) and os.path.getsize(output_path) > 100:
+                    return True, os.path.getsize(output_path)
+            # Fallback: screenshot the rendered image
+            page.screenshot(path=output_path, full_page=True)
+        else:
+            # For documents and other types: save as PDF via page.pdf()
+            page.pdf(path=output_path, print_background=True)
 
-        if os.path.exists(output_path) and os.path.getsize(output_path) > 1000:
+        if os.path.exists(output_path) and os.path.getsize(output_path) > 100:
             return True, os.path.getsize(output_path)
         return False, 0
 
