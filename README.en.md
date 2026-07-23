@@ -12,13 +12,24 @@
 
 Yandex Disk is widely used for sharing conference recordings, lectures, online courses, and other files. But often authors completely disable downloading — no download button, no way to save files, no chance to get the data.
 
-**yadisk-downloader** solves this: paste a public link, and the tool downloads all files at once with resolution control, smart conversion presets, and a modern GUI.
+**yadisk-downloader** solves this: paste a public link, and the tool downloads all files at once.
+
+### How does it work?
+
+- **Video** — downloaded via HLS streams (intercept m3u8 → ffmpeg) in original quality
+- **Documents, images, and other files** — when the owner disabled downloading, the tool opens the file in Yandex Documents (docviewer) and saves the rendered content as PDF
+- **Regular links** — downloaded directly via Yandex Disk API
+
+> **Note:** If the owner disabled downloading, documents and images are saved as PDF (a popup warning is shown). The original format is unavailable due to Yandex Disk server restrictions.
 
 ## Features
 
-- **One-command bulk download** — paste a link, get all files
+- **Download with disabled downloading** — works even when the owner blocked download
+- **Bulk download with one command** — paste a link, get all files
 - **All file types** — video, audio, images, documents, archives, executables
-- **Resolution control** — choose 240p, 360p, 480p, 720p, or 1080p
+- **HLS video download** — intercept m3u8 → ffmpeg, best quality
+- **Docviewer fallback** — renders documents/photos via Yandex Documents
+- **Resolution control** — 240p, 360p, 480p, 720p, or 1080p
 - **9 conversion presets** — H.265, H.264, MP3, AAC, and more
 - **CLI + GUI** — automate with command line, or use the visual interface
 - **Folder filtering** — download specific folders only
@@ -30,18 +41,15 @@ Yandex Disk is widely used for sharing conference recordings, lectures, online c
 - **Scheduled downloads** — run downloads on a schedule (cron)
 - **Proxy support** — use HTTP/SOCKS proxy for downloads
 - **Config file** — save your settings for reuse
-- **Notifications** — system notification when download completes
+- **Notifications** — system notifications + popup warnings
 - **Skip existing** — won't re-download files you already have
 - **Cross-platform** — works on Windows, macOS, and Linux
 
 ## Quick Start
 
 ```bash
-# Install
 pip install -r requirements.txt
 playwright install chromium
-
-# Download all files from a public link
 python -m yadisk_downloader https://disk.yandex.ru/d/XXXXX
 ```
 
