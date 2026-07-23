@@ -44,7 +44,6 @@ if ctk is not None:
             ctk.CTkLabel(link_frame, text="Public link:").pack(side="left", padx=(0, 5))
             self.link_entry = ctk.CTkEntry(link_frame, placeholder_text="https://disk.yandex.ru/d/...")
             self.link_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
-            self.link_entry.bind("<Control-v>", self._paste_from_clipboard)
             self.link_entry.bind("<Button-3>", self._show_context_menu)
             self.scan_btn = ctk.CTkButton(link_frame, text="Scan", width=80, command=self._scan)
             self.scan_btn.pack(side="right")
@@ -117,8 +116,31 @@ if ctk is not None:
         def _paste_from_clipboard(self, event=None):
             try:
                 self.link_entry.delete(0, "end")
-                text = self.clipboard_get()
-                self.link_entry.insert(0, text)
+                # Try multiple methods to get clipboard content
+                text = ""
+                try:
+                    text = self.clipboard_get()
+                except:
+                    pass
+                if not text:
+                    try:
+                        import subprocess
+                        if os.name == 'nt':  # Windows
+                            result = subprocess.run(['powershell', '-command', 'Get-Clipboard'], 
+                                                      capture_output=True, text=True, timeout=5)
+                            text = result.stdout.strip()
+                    except:
+                        pass
+                if not text:
+                    try:
+                        import subprocess
+                        if os.name == 'posix':  # macOS/Linux
+                            result = subprocess.run(['pbpaste'], capture_output=True, text=True, timeout=5)
+                            text = result.stdout.strip()
+                    except:
+                        pass
+                if text:
+                    self.link_entry.insert(0, text)
                 return "break"
             except Exception:
                 pass
@@ -239,20 +261,33 @@ if ctk is not None:
             failed = 0
 
             for i, f in enumerate(files, 1):
-                m3u8 = m3u8_map.get(f["path"])
-                if not m3u8:
-                    failed += 1
-                    continue
+                ft = f.get("file_type", "other")
                 folder = f["folder"]
                 dest = os.path.join(output, folder, f["name"]) if folder else os.path.join(output, f["name"])
                 self.after(0, lambda c=i, t=total, n=f["name"]: (
                     self.status_label.configure(text=f"[{c}/{t}] Downloading {n[:40]}..."),
                     self.progress.set(c / t),
                 ))
-                ok_dl, size = download_from_api(m3u8, dest)
+
+                ok_dl = False
+                size = 0
+
+                if ft == "video":
+                    # For video: try HLS first
+                    m3u8 = m3u8_map.get(f["path"])
+                    if m3u8:
+                        ok_dl, size = download_from_api(m3u8, dest)
+
+                if not ok_dl:
+                    # For non-video or HLS failed: use API download
+                    from .core.api import get_download_url
+                    download_url = get_download_url(url, f["path"])
+                    if download_url:
+                        ok_dl, size = download_from_api(download_url, dest)
+
                 if ok_dl:
                     success += 1
-                    if preset:
+                    if preset and ft == "video":
                         conv_out = get_output_path(dest, preset)
                         ok_conv, _ = convert(ffmpeg, dest, conv_out, preset)
                         if ok_conv and delete_original:
