@@ -361,20 +361,22 @@ def _run_download(args, config: Config):
                 print(f"\r    {pct:5.1f}%  {format_size(downloaded)}/{format_size(total)}  {speed:.1f} MB/s", end="", flush=True)
 
         # Strategy: API first, then fallback
-        if ft == "video" and ffmpeg:
-            # For video: try HLS first (best quality)
+        if ft == "video":
+            # For video: try HLS first (best quality), then API
             print(f"    Trying HLS stream...")
             try:
                 m3u8_map = collect_m3u8_urls(args.url, [f], resolution)
                 m3u8 = m3u8_map.get(f["path"])
                 if m3u8:
                     ok_dl, size = download_hls(ffmpeg, m3u8, dest, proxy)
+                    if not ok_dl:
+                        print(f"    HLS failed, trying API...")
             except Exception:
                 pass
 
             # Fallback to API
             if not ok_dl:
-                print(f"    HLS failed, trying API...")
+                print(f"    Downloading via API...")
                 download_url = get_download_url(args.url, f["path"])
                 if download_url:
                     ok_dl, size = download_from_api(download_url, dest, proxy, progress, resume)

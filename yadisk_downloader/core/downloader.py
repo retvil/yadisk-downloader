@@ -43,15 +43,18 @@ def verify_checksum(file_path: str, expected_checksum: str, algorithm: str = "md
 
 
 def download_hls(
-    ffmpeg_path: str,
+    ffmpeg_path: str | None,
     m3u8_url: str,
     output_path: str,
     proxy: str | None = None,
 ) -> tuple[bool, int]:
-    """Download HLS stream to file using ffmpeg.
+    """Download HLS stream to file.
+
+    Tries ffmpeg first. Falls back to pure Python M3U8 downloader
+    if ffmpeg is not available.
 
     Args:
-        ffmpeg_path: Path to ffmpeg binary.
+        ffmpeg_path: Path to ffmpeg binary (or None to use Python fallback).
         m3u8_url: HLS m3u8 playlist URL.
         output_path: Destination file path.
         proxy: Optional proxy URL.
@@ -59,6 +62,23 @@ def download_hls(
     Returns:
         Tuple of (success, file_size_bytes).
     """
+    # Try ffmpeg first
+    if ffmpeg_path:
+        ok, size = _download_hls_ffmpeg(ffmpeg_path, m3u8_url, output_path, proxy)
+        if ok:
+            return True, size
+
+    # Fallback: pure Python M3U8 downloader
+    return _download_hls_python(m3u8_url, output_path)
+
+
+def _download_hls_ffmpeg(
+    ffmpeg_path: str,
+    m3u8_url: str,
+    output_path: str,
+    proxy: str | None = None,
+) -> tuple[bool, int]:
+    """Download HLS stream using ffmpeg."""
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
 
     cmd = [ffmpeg_path, "-i", m3u8_url, "-c", "copy", "-y", output_path]
@@ -73,6 +93,16 @@ def download_hls(
         return False, 0
     except Exception:
         return False, 0
+
+
+def _download_hls_python(
+    m3u8_url: str,
+    output_path: str,
+    workers: int = 8,
+) -> tuple[bool, int]:
+    """Download HLS stream using pure Python M3U8 parser."""
+    from .m3u8_parser import download_hls_python
+    return download_hls_python(m3u8_url, output_path, workers=workers)
 
 
 def download_from_api(
