@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="yadisk-downloader",
-    version="1.0.0",
+    version="1.1.0",
     description="Yandex Disk Downloader with CLI and GUI",
     author="yadisk-downloader contributors",
     license="MIT",

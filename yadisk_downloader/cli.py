@@ -6,6 +6,7 @@ import sys
 import time
 from pathlib import Path
 
+from . import __version__
 from .config import Config, get_config_path
 from .core.api import get_download_url, list_files
 from .core.browser import collect_m3u8_urls
@@ -467,6 +468,7 @@ def main():
         prog="yadisk-downloader",
         description="Yandex Disk Downloader with CLI and GUI",
     )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("url", nargs="?", help="Yandex Disk public link")
     parser.add_argument("-r", "--resolution", default=None,
                         choices=["240p", "360p", "480p", "720p", "1080p"],
