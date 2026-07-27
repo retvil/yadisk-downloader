@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.1.1] - 2026-07-27
+
+### Ajouté
+- **Téléchargement HLS parallèle** — 3-5x plus rapide via ThreadPoolExecutor (4 workers par défaut, max 16)
+- **Cache JSON atomique** — cache m3u8 avec TTL, écritures atomiques, détection de corruption
+- **Sanitisation des entrées** — suppression credentials URL/proxy des logs, prévention path traversal, parsing proxy sécurisé
+- **Pool de connexions** — réutilisation session HTTP dans téléchargements API (taille pool 10)
+- **Flag `--version`** — affichage version CLI
+
+### Modifié
+- Version synchronisée sur tous fichiers : 1.1.1
+- Downloader interne refactorisé pour utiliser nouveaux modules parallel_hls, cache, safety
+
+### Infrastructure
+- Tests: suite pytest pour modules parallel_hls, cache, safety
+- CI: GitHub Actions workflow (ruff → mypy strict → pytest)
+- Qualité code: pyproject.toml avec mypy strict, config ruff
+
 ## [1.1.0] - 2026-07-23
 
 ### Ajouté

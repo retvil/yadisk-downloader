@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.1.1] - 2026-07-27
+
+### Hinzugefügt
+- **Paralleler HLS-Download** — 3-5x schnellerer Video-Download via ThreadPoolExecutor (4 Worker Standard, max 16)
+- **Atomarer JSON-Cache** — m3u8-Playlist-Cache mit TTL, atomaren Schreibvorgängen, Korruptionserkennung
+- **Eingabe-Sanitisierung** — URL/Proxy-Credentials aus Logs entfernt, Pfad-Traversal-Schutz, sicheres Proxy-Parsing
+- **Connection Pooling** — HTTP-Session-Wiederverwendung bei API-Downloads (Pool-Größe 10)
+- **`--version` Flag** — CLI-Version anzeigen
+
+### Geändert
+- Version in allen Dateien synchronisiert: 1.1.1
+- Interner Downloader refactored für neue parallel_hls, cache, safety Module
+
+### Infrastruktur
+- Tests: pytest Suite für parallel_hls, cache, safety Module
+- CI: GitHub Actions Workflow (ruff → mypy strict → pytest)
+- Code-Qualität: pyproject.toml mit mypy strict, ruff config
+
 ## [1.1.0] - 2026-07-23
 
 ### Hinzugefügt

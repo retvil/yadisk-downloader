@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.1.1] - 2026-07-27
+
+### 追加
+- **並列HLSダウンロード** — ThreadPoolExecutorで3-5倍高速化（デフォルト4ワーカー、最大16）
+- **アトミックJSONキャッシュ** — TTL付きm3u8プレイリストキャッシュ、アトミック書き込み、破損検知
+- **入力サニタイズ** — URL/プロキシ認証情報をログから除去、パストラバーサル防止、安全なプロキシ解析
+- **接続プーリング** — APIダウンロードでHTTPセッション再利用（プールサイズ10）
+- **`--version`フラグ** — CLIバージョン表示
+
+### 変更
+- 全ファイルでバージョン統一：1.1.1
+- 内部ダウンローダーを新モジュール（parallel_hls, cache, safety）使用にリファクタ
+
+### インフラ
+- テスト: parallel_hls, cache, safetyモジュールのpytestスイート
+- CI: GitHub Actionsワークフロー (ruff → mypy strict → pytest)
+- コード品質: pyproject.toml (mypy strict, ruff設定)
+
 ## [1.1.0] - 2026-07-23
 
 ### 追加

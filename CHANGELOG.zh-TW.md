@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.1.1] - 2026-07-27
+
+### 新增
+- **並行 HLS 下載** — ThreadPoolExecutor 實現 3-5 倍加速（預設 4 workers，上限 16）
+- **原子性 JSON 快取** — m3u8 播放列表快取帶 TTL、原子寫入、損壞檢測
+- **輸入清理** — URL/代理憑證從日誌移除、路徑遍歷防護、安全代理解析
+- **連線池** — API 下載複用 HTTP Session（池大小 10）
+- **`--version` 旗標** — CLI 版本顯示
+
+### 變更
+- 所有檔案版本統一為 1.1.1
+- 內部下載器重構使用新模組（parallel_hls, cache, safety）
+
+### 基礎設施
+- 測試: parallel_hls, cache, safety 模組 pytest 測試套件
+- CI: GitHub Actions workflow (ruff → mypy strict → pytest)
+- 程式碼品質: pyproject.toml (mypy strict, ruff 設定)
+
 ## [1.1.0] - 2026-07-23
 
 ### 新增
