@@ -1,6 +1,5 @@
 """System notifications for yadisk-downloader."""
 
-import os
 import platform
 import subprocess
 

@@ -1,7 +1,6 @@
 """Yandex Disk API — file discovery and download for public links."""
 
 import json
-import os
 import ssl
 import time
 import urllib.parse

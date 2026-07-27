@@ -2,7 +2,6 @@
 
 import os
 
-
 FILE_TYPES: dict[str, list[str]] = {
     "video": [".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm", ".m4v"],
     "audio": [".mp3", ".wav", ".flac", ".aac", ".ogg", ".wma", ".m4a"],

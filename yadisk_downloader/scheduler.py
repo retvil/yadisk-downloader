@@ -2,12 +2,9 @@
 
 import json
 import os
-import signal
-import sys
 import time
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
-
 
 SCHEDULER_DIR = Path.home() / ".yadisk-downloader"
 SCHEDULE_FILE = SCHEDULER_DIR / "schedule.json"
@@ -105,7 +102,7 @@ class ScheduleConfig:
         if not path.exists():
             return cls()
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 data = json.load(f)
             entries = [ScheduleEntry(**e) for e in data.get("entries", [])]
             return cls(entries=entries)

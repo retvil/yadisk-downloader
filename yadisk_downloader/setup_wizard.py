@@ -1,9 +1,7 @@
 """First-run setup wizard for downloading Chromium browser."""
 
-import os
 import subprocess
 import sys
-from pathlib import Path
 
 
 def is_chromium_installed() -> bool:

@@ -11,11 +11,17 @@ from .config import Config, get_config_path
 from .core.api import get_download_url, list_files
 from .core.browser import collect_m3u8_urls
 from .core.converter import PRESETS, convert, get_output_path, list_presets
-from .core.downloader import download_from_api, download_hls, download_via_docviewer, compute_checksum, verify_checksum
+from .core.downloader import (
+    compute_checksum,
+    download_from_api,
+    download_hls,
+    download_via_docviewer,
+    verify_checksum,
+)
 from .core.file_types import list_types
 from .notify import notify_download_complete
 from .queue import DownloadQueue
-from .scheduler import ScheduleConfig, is_running, save_pid, remove_pid
+from .scheduler import ScheduleConfig, is_running, remove_pid, save_pid
 from .state import DownloadState, get_state_file
 from .utils import find_ffmpeg, format_size
 
@@ -293,9 +299,9 @@ def _run_download(args, config: Config):
     if proxy:
         print(f"  Proxy: {proxy}")
     if resume:
-        print(f"  Resume: enabled")
+        print("  Resume: enabled")
     if checksum:
-        print(f"  Checksum: enabled")
+        print("  Checksum: enabled")
 
     # List mode
     if args.list:
@@ -364,20 +370,20 @@ def _run_download(args, config: Config):
         # Strategy: API first, then fallback
         if ft == "video":
             # For video: try HLS first (best quality), then API
-            print(f"    Trying HLS stream...")
+            print("    Trying HLS stream...")
             try:
                 m3u8_map = collect_m3u8_urls(args.url, [f], resolution)
                 m3u8 = m3u8_map.get(f["path"])
                 if m3u8:
                     ok_dl, size = download_hls(ffmpeg, m3u8, dest, proxy)
                     if not ok_dl:
-                        print(f"    HLS failed, trying API...")
+                        print("    HLS failed, trying API...")
             except Exception:
                 pass
 
             # Fallback to API
             if not ok_dl:
-                print(f"    Downloading via API...")
+                print("    Downloading via API...")
                 download_url = get_download_url(args.url, f["path"])
                 if download_url:
                     ok_dl, size = download_from_api(download_url, dest, proxy, progress, resume)
@@ -385,7 +391,7 @@ def _run_download(args, config: Config):
 
         else:
             # For non-video: API first, then docviewer fallback
-            print(f"    Downloading via API...")
+            print("    Downloading via API...")
             download_url = get_download_url(args.url, f["path"])
             if download_url:
                 ok_dl, size = download_from_api(download_url, dest, proxy, progress, resume)
@@ -393,7 +399,7 @@ def _run_download(args, config: Config):
 
             # Docviewer fallback for all non-video types when API fails
             if not ok_dl and ft != "video":
-                print(f"    API failed, trying docviewer fallback...")
+                print("    API failed, trying docviewer fallback...")
                 # Rename output to .pdf since docviewer always saves as PDF
                 base, ext = os.path.splitext(dest)
                 if ext.lower() != ".pdf":
@@ -424,7 +430,7 @@ def _run_download(args, config: Config):
             # Compute checksum
             file_checksum = None
             if checksum:
-                print(f"    Computing checksum...")
+                print("    Computing checksum...")
                 file_checksum = compute_checksum(dest)
                 print(f"    MD5: {file_checksum}")
 
@@ -443,14 +449,14 @@ def _run_download(args, config: Config):
                     print(f"    Converted: {format_size(conv_size)}")
                     if args.delete_original or config.delete_original:
                         os.remove(dest)
-                        print(f"    Deleted original")
+                        print("    Deleted original")
                 else:
-                    print(f"    Conversion failed")
+                    print("    Conversion failed")
         else:
             # Update state
             state.update_file(f["path"], status="failed")
             state.save(state_file)
-            print(f"    FAILED")
+            print("    FAILED")
             failed += 1
 
     total_elapsed = time.time() - start_time

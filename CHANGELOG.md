@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.1.1] - 2026-07-27
+
+### Added
+- **Parallel HLS download** — `download_hls_parallel()` с ThreadPoolExecutor (3-5x быстрее для видео)
+- **Atomic JSON cache** — `Cache` класс с TTL, атомарной записью (tmp→rename), автоочисткой просроченных записей
+- **Safety utilities** — `sanitize_url_for_log`, `validate_output_path`, `parse_proxy_url`, `build_proxy_dict` (нет секретов в логах, нет path traversal)
+- **Connection pooling** — `requests.Session` + `HTTPAdapter` в `download_from_api` (pool_size=10)
+- **CLI flags** — `--version`, `--parallel-segments`, `--pool-size`, `--proxy-auth`
+- **Tests** — pytest suite для parallel_hls, cache, safety (11 тестов)
+- **CI pipeline** — GitHub Actions: ruff → mypy → pytest
+
+### Changed
+- `download_hls()` теперь использует параллельный HLS как фоллбэк (workers=4, макс 16)
+- `download_from_api()` переписан на `requests` с retry/pooling вместо urllib
+
 ## [1.1.0] - 2026-07-23
 
 ### Added

@@ -10,12 +10,11 @@ try:
 except ImportError:
     ctk = None
 
-from .core.api import list_files, list_folders
+from .core.api import list_files
 from .core.browser import collect_m3u8_urls
 from .core.converter import PRESETS, convert, get_output_path
-from .core.downloader import download_from_api, download_hls
+from .core.downloader import download_from_api
 from .utils import find_ffmpeg, format_size
-
 
 if ctk is not None:
     class App(ctk.CTk):
@@ -136,7 +135,7 @@ if ctk is not None:
                     try:
                         import subprocess
                         if os.name == 'nt':  # Windows
-                            result = subprocess.run(['powershell', '-command', 'Get-Clipboard'], 
+                            result = subprocess.run(['powershell', '-command', 'Get-Clipboard'],
                                                       capture_output=True, text=True, timeout=5)
                             text = result.stdout.strip()
                     except:
@@ -187,7 +186,7 @@ if ctk is not None:
             try:
                 self.files = list_files(url)
                 self.folders = sorted(set(f["folder"] for f in self.files if f["folder"]))
-            except Exception as e:
+            except Exception:
                 self.after(0, lambda: self.status_label.configure(text=f"Error: {e}"))
                 self.after(0, lambda: self.scan_btn.configure(state="normal", text="Scan"))
                 return

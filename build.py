@@ -4,7 +4,6 @@ Build script for yadisk-downloader.
 Creates distributable packages for Windows, macOS, and Linux.
 """
 
-import os
 import platform
 import shutil
 import subprocess

@@ -1,11 +1,9 @@
 """Download state tracking for resume support."""
 
 import json
-import os
 import time
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
-
 
 STATE_DIR = Path.home() / ".yadisk-downloader"
 STATE_FILE = STATE_DIR / "state.json"
@@ -54,7 +52,7 @@ class DownloadState:
         if not path.exists():
             return None
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 data = json.load(f)
             files = {
                 k: FileState(**v)

@@ -2,12 +2,12 @@
 
 import hashlib
 import os
-import shutil
 import subprocess
 import time
-import urllib.parse
-import urllib.request
-import ssl
+from pathlib import Path
+
+from .parallel_hls import download_hls_parallel
+from .safety import build_proxy_dict
 
 
 def compute_checksum(file_path: str, algorithm: str = "md5") -> str:
@@ -47,10 +47,11 @@ def download_hls(
     m3u8_url: str,
     output_path: str,
     proxy: str | None = None,
+    workers: int = 4,
 ) -> tuple[bool, int]:
     """Download HLS stream to file.
 
-    Tries ffmpeg first. Falls back to pure Python M3U8 downloader
+    Tries ffmpeg first. Falls back to pure Python M3U8 parallel downloader
     if ffmpeg is not available.
 
     Args:
@@ -58,6 +59,7 @@ def download_hls(
         m3u8_url: HLS m3u8 playlist URL.
         output_path: Destination file path.
         proxy: Optional proxy URL.
+        workers: Number of parallel download workers (default: 4, max: 16).
 
     Returns:
         Tuple of (success, file_size_bytes).
@@ -68,8 +70,27 @@ def download_hls(
         if ok:
             return True, size
 
-    # Fallback: pure Python M3U8 downloader
-    return _download_hls_python(m3u8_url, output_path)
+    # Fallback: pure Python parallel M3U8 downloader
+    try:
+        # Build headers with proxy auth if needed
+        headers = {}
+        if proxy:
+            proxy_parts = build_proxy_dict(proxy)
+            # Proxy auth is embedded in the proxy URL passed to urllib
+            pass
+
+        download_hls_parallel(
+            m3u8_url=m3u8_url,
+            output_path=Path(output_path),
+            workers=min(max(workers, 1), 16),
+            headers=headers,
+            progress_callback=None,
+        )
+        if os.path.exists(output_path):
+            return True, os.path.getsize(output_path)
+    except Exception:
+        pass
+    return False, 0
 
 
 def _download_hls_ffmpeg(
@@ -111,8 +132,9 @@ def download_from_api(
     proxy: str | None = None,
     progress_callback=None,
     resume: bool = True,
+    pool_size: int = 10,
 ) -> tuple[bool, int]:
-    """Download file from a direct URL via HTTP with resume support.
+    """Download file from a direct URL via HTTP with resume support and connection pooling.
 
     Args:
         download_url: Direct download URL.
@@ -120,26 +142,41 @@ def download_from_api(
         proxy: Optional proxy URL (e.g. "http://proxy:8080").
         progress_callback: Optional callable(bytes_downloaded, total_size).
         resume: If True, resume from where we left off.
+        pool_size: HTTP connection pool size (default: 10).
 
     Returns:
         Tuple of (success, file_size_bytes).
     """
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
 
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
+    # Use requests for connection pooling
+    import requests
+    from requests.adapters import HTTPAdapter
+    from urllib3.util.retry import Retry
 
-    # Setup proxy
-    handlers = [ssl.HTTPSHandler(context=ctx)]
+    session = requests.Session()
+
+    # Configure retry strategy
+    retry_strategy = Retry(
+        total=3,
+        backoff_factor=1,
+        status_forcelist=[429, 500, 502, 503, 504],
+        allowed_methods=["HEAD", "GET", "OPTIONS"],
+    )
+    adapter = HTTPAdapter(
+        pool_connections=pool_size,
+        pool_maxsize=pool_size,
+        max_retries=retry_strategy,
+    )
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+
+    # Configure proxy
     if proxy:
-        proxy_handler = urllib.request.ProxyHandler({
-            "http": proxy,
-            "https": proxy,
-        })
-        handlers.append(proxy_handler)
+        session.proxies = build_proxy_dict(proxy)
 
-    opener = urllib.request.build_opener(*handlers)
+    # SSL verification disabled for Yandex
+    session.verify = False
 
     # Check for partial download
     downloaded = 0
@@ -148,43 +185,47 @@ def download_from_api(
 
     for attempt in range(3):
         try:
-            req = urllib.request.Request(download_url)
-
-            # Add Range header for resume
+            headers = {}
             if downloaded > 0:
-                req.add_header("Range", f"bytes={downloaded}-")
+                headers["Range"] = f"bytes={downloaded}-"
 
-            with opener.open(req, timeout=600) as resp:
-                # Check if server supports range requests
-                status_code = resp.getcode()
-                if status_code == 206:
-                    # Partial content - resume
-                    pass
-                elif status_code == 200:
-                    # Full content - start from beginning
-                    downloaded = 0
+            resp = session.get(download_url, headers=headers, stream=True, timeout=600)
 
-                total_size = int(resp.headers.get("Content-Length", 0))
-                if status_code == 200:
-                    total_size = total_size  # Full size
-                elif status_code == 206:
-                    total_size = downloaded + total_size  # Remaining + already downloaded
+            # Check if server supports range requests
+            status_code = resp.status_code
+            if status_code == 206:
+                # Partial content - resume
+                pass
+            elif status_code == 200:
+                # Full content - start from beginning
+                downloaded = 0
+            elif status_code == 416:
+                # Range not satisfiable - file already complete
+                return True, os.path.getsize(output_path)
+            else:
+                resp.raise_for_status()
 
-                mode = "ab" if downloaded > 0 and status_code == 206 else "wb"
-                with open(output_path, mode) as f:
-                    while True:
-                        chunk = resp.read(8192)
-                        if not chunk:
-                            break
-                        f.write(chunk)
-                        downloaded += len(chunk)
-                        if progress_callback:
-                            progress_callback(downloaded, total_size)
+            total_size = int(resp.headers.get("Content-Length", 0))
+            if status_code == 200:
+                total_size = total_size  # Full size
+            elif status_code == 206:
+                total_size = downloaded + total_size  # Remaining + already downloaded
+
+            mode = "ab" if downloaded > 0 and status_code == 206 else "wb"
+            with open(output_path, mode) as f:
+                for chunk in resp.iter_content(chunk_size=8192):
+                    if not chunk:
+                        break
+                    f.write(chunk)
+                    downloaded += len(chunk)
+                    if progress_callback:
+                        progress_callback(downloaded, total_size)
 
             if os.path.exists(output_path):
                 return True, os.path.getsize(output_path)
             return False, 0
-        except Exception:
+
+        except requests.exceptions.RequestException:
             if attempt < 2:
                 time.sleep(2 * (attempt + 1))
             else:

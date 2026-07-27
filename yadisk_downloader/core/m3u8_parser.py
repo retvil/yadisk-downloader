@@ -7,7 +7,6 @@ selects resolution, downloads .ts segments, and merges them into a single file.
 import os
 import re
 import ssl
-import time
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed

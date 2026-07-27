@@ -2,9 +2,8 @@
 
 import json
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-
 
 QUEUE_DIR = Path.home() / ".yadisk-downloader"
 QUEUE_FILE = QUEUE_DIR / "queue.json"
@@ -69,7 +68,7 @@ class DownloadQueue:
         if not path.exists():
             return cls()
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 data = json.load(f)
             items = [QueueItem(**item) for item in data.get("items", [])]
             return cls(items=items)

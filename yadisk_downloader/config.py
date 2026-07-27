@@ -1,8 +1,7 @@
 """Configuration file management for yadisk-downloader."""
 
 import json
-import os
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 CONFIG_DIR = Path.home() / ".yadisk-downloader"
@@ -45,7 +44,7 @@ class Config:
             return cls()
 
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 data = json.load(f)
             return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
         except Exception:
