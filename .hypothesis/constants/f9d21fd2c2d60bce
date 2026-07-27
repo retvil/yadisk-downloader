@@ -1,0 +1,4 @@
+# file: D:\ya-downloader\yadisk-downloader\yadisk_downloader\core\converter.py
+# hypothesis_version: 6.151.11
+
+[7200, '-b:a', '-c', '-c:a', '-c:v', '-crf', '-i', '-vf', '-vn', '-y', '.', '.m4a', '.mp3', '.mp4', '1080', '128k', '192k', '256k', '320k', '360', '480', '64k', '96k', 'Available presets:\n', 'aac', 'balanced', 'best', 'compact', 'copy', 'libmp3lame', 'libx264', 'libx265', 'mobile', 'mp3', 'mp3-small', 'remux', 'youtube']

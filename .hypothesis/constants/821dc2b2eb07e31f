@@ -1,0 +1,4 @@
+# file: D:\ya-downloader\yadisk-downloader\yadisk_downloader\core\m3u8_parser.py
+# hypothesis_version: 6.151.11
+
+[720, '"', '#(EXT[^:,]+):?(.*)', '#EXT', '*/*', '.', '/', '://', '=', 'Accept', 'BANDWIDTH', 'CODECS', 'EXT-X-MEDIA', 'EXT-X-STREAM-INF', 'M3U', 'Mozilla/5.0', 'NAME', 'RESOLUTION', 'TARGETDURATION', 'User-Agent', 'VERSION', '_height', 'ab', 'bandwidth', 'codecs', 'duration', 'error', 'height', 'http://', 'https://', 'inf', 'master', 'media', 'name', 'replace', 'resolution', 'resolutions', 'segments', 'target_duration', 'total_duration', 'type', 'url', 'utf-8', 'variants', 'version', 'wb', 'x']

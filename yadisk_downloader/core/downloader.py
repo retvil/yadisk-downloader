@@ -1,13 +1,34 @@
-"""File downloaders — HLS, API, and browser-based with resume and checksum."""
+"""File downloaders — HLS, API, and browser-based with resume, checksum, and plugin system."""
 
 import hashlib
 import os
 import subprocess
 import time
 from pathlib import Path
+from typing import Optional, Callable
+
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from .parallel_hls import download_hls_parallel
 from .safety import build_proxy_dict
+from .auth import get_api_headers
+
+from yadisk_downloader.plugins.base import (
+    get_registry,
+    FileInfo,
+    DownloadContext,
+    DownloadResult,
+)
+from yadisk_downloader.events import (
+    get_event_bus,
+    DownloadStarted,
+    DownloadProgress,
+    DownloadCompleted,
+    DownloadFailed,
+)
+from yadisk_downloader.config.schema import get_settings
 
 
 def compute_checksum(file_path: str, algorithm: str = "md5") -> str:
@@ -42,6 +63,92 @@ def verify_checksum(file_path: str, expected_checksum: str, algorithm: str = "md
     return actual == expected_checksum
 
 
+def download_file(
+    file_info: FileInfo,
+    dest: Path,
+    proxy: Optional[str] = None,
+    progress_callback: Optional[Callable[[int, int], None]] = None,
+    resume: bool = True,
+    workers: int = 4,
+    ffmpeg_path: Optional[str] = None,
+    page=None,  # Playwright page for browser strategies
+) -> tuple[bool, int]:
+    """Download a file using the plugin system.
+
+    Args:
+        file_info: File information including URLs.
+        dest: Destination file path.
+        proxy: Optional proxy URL.
+        progress_callback: Optional callable(downloaded, total).
+        resume: Resume interrupted downloads.
+        workers: Parallel HLS workers.
+        ffmpeg_path: Path to ffmpeg binary.
+        page: Playwright page for browser-based strategies.
+
+    Returns:
+        Tuple of (success, file_size_bytes).
+    """
+    settings = get_settings()
+    registry = get_registry()
+    event_bus = get_event_bus()
+
+    strategy = registry.get_for_file(file_info)
+    if not strategy:
+        event_bus.emit(DownloadFailed(
+            url=file_info.path or "",
+            file_path=str(dest),
+            error="No strategy available for file type",
+        ))
+        return False, 0
+
+    # Build context for strategy
+    context = DownloadContext(
+        settings=settings,
+        event_bus=event_bus,
+        cache_dir=settings.get_cache_dir(),
+        state_dir=settings.get_state_dir(),
+        proxy_dict=build_proxy_dict(proxy) if proxy else None,
+        oauth_headers=get_api_headers(),
+        progress_callback=progress_callback,
+    )
+
+    # Emit started event
+    event_bus.emit(DownloadStarted(
+        url=file_info.download_url or file_info.m3u8_url or file_info.path or "",
+        file_path=str(dest),
+        file_size=file_info.size,
+    ))
+
+    # Try the strategy
+    try:
+        result: DownloadResult = strategy.download(file_info, dest, context)
+        if result.success:
+            event_bus.emit(DownloadCompleted(
+                url=file_info.path or "",
+                file_path=str(dest),
+                size=result.size,
+                checksum=result.checksum,
+            ))
+            return True, result.size
+        else:
+            # Strategy failed, emit failed event
+            event_bus.emit(DownloadFailed(
+                url=file_info.path or "",
+                file_path=str(dest),
+                error=result.error or "Unknown error",
+            ))
+            return False, 0
+    except Exception as e:
+        event_bus.emit(DownloadFailed(
+            url=file_info.path or "",
+            file_path=str(dest),
+            error=str(e),
+        ))
+        return False, 0
+
+
+# ===== Backward compatibility functions =====
+
 def download_hls(
     ffmpeg_path: str | None,
     m3u8_url: str,
@@ -49,49 +156,97 @@ def download_hls(
     proxy: str | None = None,
     workers: int = 4,
 ) -> tuple[bool, int]:
-    """Download HLS stream to file.
+    """Download HLS stream to file (backward compat)."""
+    file_info = FileInfo(
+        name=Path(output_path).name,
+        path=m3u8_url,
+        size=0,
+        file_type="video",
+        m3u8_url=m3u8_url,
+    )
+    success, size = download_file(
+        file_info=file_info,
+        dest=Path(output_path),
+        proxy=proxy,
+        workers=workers,
+        ffmpeg_path=ffmpeg_path,
+    )
+    return success, size
 
-    Tries ffmpeg first. Falls back to pure Python M3U8 parallel downloader
-    if ffmpeg is not available.
 
-    Args:
-        ffmpeg_path: Path to ffmpeg binary (or None to use Python fallback).
-        m3u8_url: HLS m3u8 playlist URL.
-        output_path: Destination file path.
-        proxy: Optional proxy URL.
-        workers: Number of parallel download workers (default: 4, max: 16).
+def download_from_api(
+    download_url: str,
+    output_path: str,
+    proxy: str | None = None,
+    progress_callback=None,
+    resume: bool = True,
+    pool_size: int = 10,
+) -> tuple[bool, int]:
+    """Download file from a direct URL via HTTP with resume support and connection pooling."""
+    file_info = FileInfo(
+        name=Path(output_path).name,
+        path=download_url,
+        size=0,
+        file_type="document",
+        download_url=download_url,
+    )
+    success, size = download_file(
+        file_info=file_info,
+        dest=Path(output_path),
+        proxy=proxy,
+        progress_callback=progress_callback,
+        resume=resume,
+    )
+    return success, size
 
-    Returns:
-        Tuple of (success, file_size_bytes).
-    """
-    # Try ffmpeg first
-    if ffmpeg_path:
-        ok, size = _download_hls_ffmpeg(ffmpeg_path, m3u8_url, output_path, proxy)
-        if ok:
-            return True, size
 
-    # Fallback: pure Python parallel M3U8 downloader
-    try:
-        # Build headers with proxy auth if needed
-        headers = {}
-        if proxy:
-            proxy_parts = build_proxy_dict(proxy)
-            # Proxy auth is embedded in the proxy URL passed to urllib
-            pass
+def download_via_docviewer(
+    page,
+    public_key: str,
+    file_path: str,
+    output_path: str,
+    file_type: str = "document",
+    timeout: int = 60,
+) -> tuple[bool, int]:
+    """Download any file via Yandex docviewer rendering (backward compat)."""
+    # This requires Playwright page - use browser strategy
+    file_info = FileInfo(
+        name=Path(output_path).name,
+        path=file_path,
+        size=0,
+        file_type=file_type,
+    )
+    success, size = download_file(
+        file_info=file_info,
+        dest=Path(output_path),
+        page=page,
+    )
+    return success, size
 
-        download_hls_parallel(
-            m3u8_url=m3u8_url,
-            output_path=Path(output_path),
-            workers=min(max(workers, 1), 16),
-            headers=headers,
-            progress_callback=None,
-        )
-        if os.path.exists(output_path):
-            return True, os.path.getsize(output_path)
-    except Exception:
-        pass
-    return False, 0
 
+def download_via_browser(
+    page,
+    file_url: str,
+    output_path: str,
+    timeout: int = 300,
+) -> tuple[bool, int]:
+    """Download file using Playwright browser download (backward compat)."""
+    file_info = FileInfo(
+        name=Path(output_path).name,
+        path=file_url,
+        size=0,
+        file_type="document",
+        download_url=file_url,
+    )
+    success, size = download_file(
+        file_info=file_info,
+        dest=Path(output_path),
+        page=page,
+    )
+    return success, size
+
+
+# ===== Internal helpers (kept for backward compat) =====
 
 def _download_hls_ffmpeg(
     ffmpeg_path: str,
@@ -126,256 +281,14 @@ def _download_hls_python(
     return download_hls_python(m3u8_url, output_path, workers=workers)
 
 
-def download_from_api(
-    download_url: str,
-    output_path: str,
-    proxy: str | None = None,
-    progress_callback=None,
-    resume: bool = True,
-    pool_size: int = 10,
-) -> tuple[bool, int]:
-    """Download file from a direct URL via HTTP with resume support and connection pooling.
-
-    Args:
-        download_url: Direct download URL.
-        output_path: Destination file path.
-        proxy: Optional proxy URL (e.g. "http://proxy:8080").
-        progress_callback: Optional callable(bytes_downloaded, total_size).
-        resume: If True, resume from where we left off.
-        pool_size: HTTP connection pool size (default: 10).
-
-    Returns:
-        Tuple of (success, file_size_bytes).
-    """
-    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
-
-    # Use requests for connection pooling
-    import requests
-    from requests.adapters import HTTPAdapter
-    from urllib3.util.retry import Retry
-
-    session = requests.Session()
-
-    # Configure retry strategy
-    retry_strategy = Retry(
-        total=3,
-        backoff_factor=1,
-        status_forcelist=[429, 500, 502, 503, 504],
-        allowed_methods=["HEAD", "GET", "OPTIONS"],
-    )
-    adapter = HTTPAdapter(
-        pool_connections=pool_size,
-        pool_maxsize=pool_size,
-        max_retries=retry_strategy,
-    )
-    session.mount("http://", adapter)
-    session.mount("https://", adapter)
-
-    # Configure proxy
-    if proxy:
-        session.proxies = build_proxy_dict(proxy)
-
-    # SSL verification disabled for Yandex
-    session.verify = False
-
-    # Check for partial download
-    downloaded = 0
-    if resume and os.path.exists(output_path):
-        downloaded = os.path.getsize(output_path)
-
-    for attempt in range(3):
-        try:
-            headers = {}
-            if downloaded > 0:
-                headers["Range"] = f"bytes={downloaded}-"
-
-            resp = session.get(download_url, headers=headers, stream=True, timeout=600)
-
-            # Check if server supports range requests
-            status_code = resp.status_code
-            if status_code == 206:
-                # Partial content - resume
-                pass
-            elif status_code == 200:
-                # Full content - start from beginning
-                downloaded = 0
-            elif status_code == 416:
-                # Range not satisfiable - file already complete
-                return True, os.path.getsize(output_path)
-            else:
-                resp.raise_for_status()
-
-            total_size = int(resp.headers.get("Content-Length", 0))
-            if status_code == 200:
-                total_size = total_size  # Full size
-            elif status_code == 206:
-                total_size = downloaded + total_size  # Remaining + already downloaded
-
-            mode = "ab" if downloaded > 0 and status_code == 206 else "wb"
-            with open(output_path, mode) as f:
-                for chunk in resp.iter_content(chunk_size=8192):
-                    if not chunk:
-                        break
-                    f.write(chunk)
-                    downloaded += len(chunk)
-                    if progress_callback:
-                        progress_callback(downloaded, total_size)
-
-            if os.path.exists(output_path):
-                return True, os.path.getsize(output_path)
-            return False, 0
-
-        except requests.exceptions.RequestException:
-            if attempt < 2:
-                time.sleep(2 * (attempt + 1))
-            else:
-                return False, 0
-
-
-def download_via_docviewer(
-    page,
-    public_key: str,
-    file_path: str,
-    output_path: str,
-    file_type: str = "document",
-    timeout: int = 60,
-) -> tuple[bool, int]:
-    """Download any file via Yandex docviewer rendering.
-
-    Opens the file in docviewer, waits for it to render, then captures
-    the rendered content. For images, downloads the high-res PNG directly.
-    For documents, saves via page.pdf().
-
-    Args:
-        page: Playwright page object.
-        public_key: Yandex Disk public folder URL.
-        file_path: Path to file on Yandex Disk (e.g. "/subfolder/file.pdf").
-        output_path: Destination file path.
-        file_type: File type category (document, image, etc.).
-        timeout: Max seconds to wait for rendering.
-
-    Returns:
-        Tuple of (success, file_size_bytes).
-    """
-    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
-
-    try:
-        # Step 1: Load the folder page to get store-prefetch data
-        page.goto(public_key, wait_until="domcontentloaded", timeout=30000)
-        time.sleep(3)
-
-        # Step 2: Extract dvSearch URL — search all resources recursively
-        dv_search = page.evaluate("""(filePath) => {
-            const script = document.getElementById('store-prefetch');
-            if (!script) return null;
-            const data = JSON.parse(script.textContent);
-            const resources = data.resources || {};
-            // Search all resources (not just root children)
-            for (const [id, res] of Object.entries(resources)) {
-                if (res.path && res.path.includes(filePath) && res.dvSearch) {
-                    return res.dvSearch;
-                }
-            }
-            return null;
-        }""", file_path)
-
-        if not dv_search:
-            return False, 0
-
-        # Step 3: Navigate to docviewer
-        dv_url = f"https://docviewer.yandex.ru{dv_search}"
-        page.goto(dv_url, wait_until="domcontentloaded", timeout=30000)
-
-        # Step 4: Wait for rendering
-        deadline = time.time() + timeout
-        while time.time() < deadline:
-            has_content = page.evaluate("""() => {
-                // Check for rendered images (docviewer renders pages as PNGs)
-                const imgs = document.querySelectorAll('img[src*="htmlimage"]');
-                if (imgs.length > 0) return 'htmlimage';
-                // Check for direct image rendering
-                const directImgs = document.querySelectorAll('img[src*="downloader.disk"], img[src*="preview"]');
-                if (directImgs.length > 0) return 'direct_image';
-                return null;
-            }""")
-            if has_content:
-                time.sleep(2)
-                break
-            time.sleep(1)
-
-        # Step 5: Save content based on type
-        if file_type == "image":
-            # For images: download the rendered PNG from docviewer's htmlimage endpoint
-            img_url = page.evaluate("""() => {
-                const img = document.querySelector('img[src*="htmlimage"]');
-                return img ? img.src : null;
-            }""")
-            if img_url:
-                import urllib.request
-                urllib.request.urlretrieve(img_url, output_path)
-                if os.path.exists(output_path) and os.path.getsize(output_path) > 100:
-                    return True, os.path.getsize(output_path)
-            # Fallback: screenshot the rendered image
-            page.screenshot(path=output_path, full_page=True)
-        else:
-            # For documents and other types: save as PDF via page.pdf()
-            page.pdf(path=output_path, print_background=True)
-
-        if os.path.exists(output_path) and os.path.getsize(output_path) > 100:
-            return True, os.path.getsize(output_path)
-        return False, 0
-
-    except Exception:
-        return False, 0
-
-
-def download_via_browser(
-    page,
-    file_url: str,
-    output_path: str,
-    timeout: int = 300,
-) -> tuple[bool, int]:
-    """Download file using Playwright browser download.
-
-    Args:
-        page: Playwright page object.
-        file_url: URL to navigate to for download.
-        output_path: Destination file path.
-        timeout: Download timeout in seconds.
-
-    Returns:
-        Tuple of (success, file_size_bytes).
-    """
-    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
-
-    try:
-        with page.expect_download(timeout=timeout * 1000) as download_info:
-            page.goto(file_url, wait_until="load", timeout=30000)
-            time.sleep(2)
-
-            # Try to find and click download button
-            download_selectors = [
-                "button:has-text('Скачать')",
-                "button:has-text('Download')",
-                "[data-t='download-button']",
-                "a[download]",
-                ".download-button",
-            ]
-            for sel in download_selectors:
-                try:
-                    btn = page.locator(sel).first
-                    if btn.is_visible(timeout=1000):
-                        btn.click()
-                        break
-                except Exception:
-                    continue
-
-        download = download_info.value
-        download.save_as(output_path)
-
-        if os.path.exists(output_path):
-            return True, os.path.getsize(output_path)
-        return False, 0
-
-    except Exception:
-        return False, 0
+__all__ = [
+    "compute_checksum",
+    "verify_checksum",
+    "download_file",
+    "download_hls",
+    "download_from_api",
+    "download_via_docviewer",
+    "download_via_browser",
+    "_download_hls_ffmpeg",
+    "_download_hls_python",
+]

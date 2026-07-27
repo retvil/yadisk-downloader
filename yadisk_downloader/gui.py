@@ -10,11 +10,14 @@ try:
 except ImportError:
     ctk = None
 
-from .core.api import list_files
+from .core.api import list_files, get_download_url
 from .core.browser import collect_m3u8_urls
 from .core.converter import PRESETS, convert, get_output_path
-from .core.downloader import download_from_api
+from .core.downloader import download_file
 from .utils import find_ffmpeg, format_size
+from .plugins.base import FileInfo
+from .config.schema import get_settings
+from .events import get_event_bus
 
 if ctk is not None:
     class App(ctk.CTk):
@@ -256,15 +259,26 @@ if ctk is not None:
                 self.after(0, lambda: self.status_label.configure(text="ERROR: ffmpeg not found"))
                 self.after(0, lambda: self.download_btn.configure(state="normal"))
                 return
-            self.after(0, lambda: self.status_label.configure(text="Collecting video URLs..."))
 
-            def progress_cb(current, total, name):
-                self.after(0, lambda c=current, t=total, n=name: (
-                    self.status_label.configure(text=f"[{c}/{t}] {n[:50]}..."),
-                    self.progress.set(c / t),
+            from .core.browser import collect_m3u8_urls
+            from .events import get_event_bus, DownloadStarted, DownloadProgress, DownloadCompleted, DownloadFailed
+            from .plugins.base import FileInfo, get_registry
+            from .config.schema import get_settings
+
+            settings = get_settings()
+            registry = get_registry()
+            event_bus = get_event_bus()
+
+            def progress_cb(downloaded, total, name=""):
+                self.after(0, lambda c=downloaded, t=total: (
+                    self.status_label.configure(text=f"Downloading {name[:40]}... {c/t*100:.1f}%"),
+                    self.progress.set(c / t if t > 0 else 0),
                 ))
 
-            m3u8_map = collect_m3u8_urls(url, files, resolution, progress_cb)
+            # Collect m3u8 URLs for videos
+            self.after(0, lambda: self.status_label.configure(text="Collecting video URLs..."))
+            m3u8_map = collect_m3u8_urls(url, files, resolution, lambda c, t, n="": None)
+
             total = len(files)
             success = 0
             failed = 0
@@ -273,26 +287,40 @@ if ctk is not None:
                 ft = f.get("file_type", "other")
                 folder = f["folder"]
                 dest = os.path.join(output, folder, f["name"]) if folder else os.path.join(output, f["name"])
+
                 self.after(0, lambda c=i, t=total, n=f["name"]: (
                     self.status_label.configure(text=f"[{c}/{t}] Downloading {n[:40]}..."),
                     self.progress.set(c / t),
                 ))
 
+                # Build FileInfo for plugin system
+                file_info = FileInfo(
+                    name=f["name"],
+                    path=f["path"],
+                    size=f["size"],
+                    file_type=f.get("file_type", "other"),
+                    download_url=download_url if (download_url := get_download_url(url, f["path"])) else None,
+                    m3u8_url=m3u8_map.get(f["path"]) if ft == "video" else None,
+                )
+
+                dest_path = Path(dest)
+                os.makedirs(os.path.dirname(dest) or ".", exist_ok=True)
+
                 ok_dl = False
                 size = 0
 
-                if ft == "video":
-                    # For video: try HLS first
-                    m3u8 = m3u8_map.get(f["path"])
-                    if m3u8:
-                        ok_dl, size = download_from_api(m3u8, dest)
-
-                if not ok_dl:
-                    # For non-video or HLS failed: use API download
-                    from .core.api import get_download_url
-                    download_url = get_download_url(url, f["path"])
-                    if download_url:
-                        ok_dl, size = download_from_api(download_url, dest)
+                try:
+                    success_download, size = download_file(
+                        file_info=file_info,
+                        dest=dest_path,
+                        progress_callback=progress_cb,
+                        resume=True,
+                        workers=4,
+                    )
+                    ok_dl = success_download
+                except Exception as e:
+                    print(f"Download error: {e}")
+                    ok_dl = False
 
                 if ok_dl:
                     success += 1

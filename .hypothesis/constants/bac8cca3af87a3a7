@@ -1,0 +1,4 @@
+# file: D:\ya-downloader\yadisk-downloader\yadisk_downloader\core\cache.py
+# hypothesis_version: 6.151.11
+
+[3600, '*.json', '-_', '.tmp', '.yadisk-downloader', '_', 'cache', 'data', 'm3u8', 'r', 'timestamp', 'utf-8', 'w']

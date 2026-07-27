@@ -13,9 +13,7 @@ from .core.browser import collect_m3u8_urls
 from .core.converter import PRESETS, convert, get_output_path, list_presets
 from .core.downloader import (
     compute_checksum,
-    download_from_api,
-    download_hls,
-    download_via_docviewer,
+    download_file,
     verify_checksum,
 )
 from .core.file_types import list_types
@@ -24,6 +22,9 @@ from .queue import DownloadQueue
 from .scheduler import ScheduleConfig, is_running, remove_pid, save_pid
 from .state import DownloadState, get_state_file
 from .utils import find_ffmpeg, format_size
+from .plugins.base import FileInfo, get_registry
+from .config.schema import get_settings
+from .events import get_event_bus, DownloadProgress, DownloadCompleted, DownloadFailed
 
 
 def _show_pdf_only_warning(original_name: str, pdf_name: str):
@@ -234,6 +235,7 @@ def _schedule_run(args, config: Config):
 
 
 def _run_download(args, config: Config):
+    """Main download logic using the plugin system."""
     # Parse type filters
     include_types = None
     exclude_types = None
@@ -264,6 +266,9 @@ def _run_download(args, config: Config):
     # Resolve resume and checksum flags
     resume = not args.no_resume
     checksum = args.checksum
+
+    # Get settings
+    settings = get_settings()
 
     # Load or create download state
     state_file = get_state_file(args.url)
@@ -345,6 +350,16 @@ def _run_download(args, config: Config):
 
     ffmpeg = find_ffmpeg()
 
+    # Initialize event bus for progress tracking
+    from .events import get_event_bus, DownloadProgress
+    event_bus = get_event_bus()
+
+    def progress(downloaded, total):
+        if total > 0:
+            pct = downloaded / total * 100
+            speed = downloaded / (time.time() - file_start + 0.001) / 1024 / 1024
+            print(f"\r    {pct:5.1f}%  {format_size(downloaded)}/{format_size(total)}  {speed:.1f} MB/s", end="", flush=True)
+
     for i, f in enumerate(pending, 1):
         dest = os.path.join(output, f["folder"], f["name"]) if f["folder"] else os.path.join(output, f["name"])
         ft = f.get("file_type", "other")
@@ -357,70 +372,56 @@ def _run_download(args, config: Config):
         state.save(state_file)
 
         os.makedirs(os.path.dirname(dest) or ".", exist_ok=True)
-        ok_dl = False
-        size = 0
 
-        # Progress callback for API downloads
-        def progress(downloaded, total):
-            if total > 0:
-                pct = downloaded / total * 100
-                speed = downloaded / (time.time() - file_start + 0.001) / 1024 / 1024
-                print(f"\r    {pct:5.1f}%  {format_size(downloaded)}/{format_size(total)}  {speed:.1f} MB/s", end="", flush=True)
+        # Build FileInfo for plugin system
+        file_info = FileInfo(
+            name=f["name"],
+            path=f["path"],
+            size=f["size"],
+            file_type=f.get("file_type", "other"),
+        )
 
-        # Strategy: API first, then fallback
+        # Add download_url and m3u8_url if available
+        download_url = get_download_url(args.url, f["path"])
+        if download_url:
+            file_info.download_url = download_url
+
+        # For videos, try to get m3u8 URL
         if ft == "video":
-            # For video: try HLS first (best quality), then API
-            print("    Trying HLS stream...")
             try:
                 m3u8_map = collect_m3u8_urls(args.url, [f], resolution)
                 m3u8 = m3u8_map.get(f["path"])
                 if m3u8:
-                    ok_dl, size = download_hls(ffmpeg, m3u8, dest, proxy)
-                    if not ok_dl:
-                        print("    HLS failed, trying API...")
+                    file_info.m3u8_url = m3u8
             except Exception:
                 pass
 
-            # Fallback to API
-            if not ok_dl:
-                print("    Downloading via API...")
-                download_url = get_download_url(args.url, f["path"])
-                if download_url:
-                    ok_dl, size = download_from_api(download_url, dest, proxy, progress, resume)
-                    print()  # New line after progress
+        # Download using plugin system
+        dest_path = Path(dest)
+        ok_dl = False
+        size = 0
 
-        else:
-            # For non-video: API first, then docviewer fallback
-            print("    Downloading via API...")
-            download_url = get_download_url(args.url, f["path"])
-            if download_url:
-                ok_dl, size = download_from_api(download_url, dest, proxy, progress, resume)
-                print()  # New line after progress
-
-            # Docviewer fallback for all non-video types when API fails
-            if not ok_dl and ft != "video":
-                print("    API failed, trying docviewer fallback...")
-                # Rename output to .pdf since docviewer always saves as PDF
-                base, ext = os.path.splitext(dest)
-                if ext.lower() != ".pdf":
-                    dest_pdf = base + ".pdf"
-                    _show_pdf_only_warning(f["name"], os.path.basename(dest_pdf))
-                else:
-                    dest_pdf = dest
-                try:
-                    from playwright.sync_api import sync_playwright
-                    with sync_playwright() as pw:
-                        browser = pw.chromium.launch(headless=True)
-                        ctx = browser.new_context()
-                        page = ctx.new_page()
-                        ok_dl, size = download_via_docviewer(
-                            page, args.url, f["path"], dest_pdf, file_type=ft
-                        )
-                        browser.close()
-                    if ok_dl:
-                        print(f"    Downloaded as PDF: {os.path.basename(dest_pdf)}")
-                except Exception as e:
-                    print(f"    Docviewer fallback failed: {e}")
+        try:
+            success, size = download_file(
+                file_info=FileInfo(
+                    name=f["name"],
+                    path=f["path"],
+                    size=f["size"],
+                    file_type=f.get("file_type", "other"),
+                    download_url=get_download_url(args.url, f["path"]) or None,
+                    m3u8_url=collect_m3u8_urls(args.url, [f], resolution).get(f["path"]) if ft == "video" else None,
+                ),
+                dest=Path(dest),
+                proxy=proxy,
+                progress_callback=progress,
+                resume=resume,
+                workers=4,  # TODO: make configurable
+            )
+            ok_dl = success
+            size = size
+        except Exception as e:
+            print(f"    Download error: {e}")
+            ok_dl = False
 
         if ok_dl:
             elapsed = time.time() - file_start
@@ -441,10 +442,10 @@ def _run_download(args, config: Config):
             success += 1
 
             # Convert if preset specified (video only)
-            if preset and ft == "video" and ffmpeg:
+            if preset and ft == "video" and find_ffmpeg():
                 conv_out = get_output_path(dest, preset)
                 print(f"    Converting ({preset})...")
-                ok_conv, conv_size = convert(ffmpeg, dest, conv_out, preset)
+                ok_conv, conv_size = convert(find_ffmpeg(), dest, conv_out, preset)
                 if ok_conv:
                     print(f"    Converted: {format_size(conv_size)}")
                     if args.delete_original or config.delete_original:

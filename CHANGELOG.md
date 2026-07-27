@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.2.0] - 2026-07-27
+
+### Added
+- **Plugin system** — `DownloadStrategy` protocol + `StrategyRegistry` для расширяемых стратегий скачивания
+- **Event bus** — `EventBus` с типизированными событиями (`DownloadStarted`, `DownloadProgress`, `DownloadCompleted`, `DownloadFailed`, `FolderScanStarted`, `FolderScanCompleted`, `QueueProcessStarted`, `QueueProcessCompleted`, `ConversionStarted`, `ConversionCompleted`, `ConversionFailed`, `StateSaved`)
+- **Pydantic Config** — `Settings` с валидацией, env vars (`YADISK_*`), JSON конфиг, `SecretStr` для OAuth токена
+- **DI Container** — `Container` с автовайрингом, синглтонами, фабриками
+- **OAuth token support** — `yadisk_oauth_token` в конфиге, авто-добавление в API URLs для приватных папок/увеличенных лимитов
+- **Crash-resilient resume** — `DownloadState` с атомарным flush (tmp→rename) каждые 1MB + transaction context manager
+- **Parallel folder download** — `FolderDownloader` с `asyncio.Semaphore` (max 4 папки параллельно)
+- **Property-based tests** — Hypothesis тесты для cache, safety, parallel_hls (10 тестов)
+- **CI pipeline** — GitHub Actions: ruff → mypy → pytest
+
+### Changed
+- **Architecture refactor** — core downloader переписан на plugin system + event bus
+- **CLI** — использует `download_file()` с plugin system + event bus прогресс
+- **GUI** — использует plugin system, event bus для прогресс-бара
+- **Version sync** — все файлы теперь показывают 1.2.0
+- **Config migration** — авто-миграция старого JSON конфига в новый формат
+
+### Fixed
+- Path traversal protection в `validate_output_path()`
+- Credentials leak в логах (`sanitize_url_for_log()` убирает user:pass@)
+- OAuth token leak — `SecretStr` маскируется в логах/конфиге
+
 ## [1.1.1] - 2026-07-27
 
 ### Added

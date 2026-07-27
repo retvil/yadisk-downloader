@@ -1,0 +1,4 @@
+# file: D:\ya-downloader\yadisk-downloader\yadisk_downloader\config\schema.py
+# hypothesis_version: 6.151.11
+
+[0.1, 1.0, 60.0, 100, 168, '.env', '.yadisk-downloader', '1080p', '240p', '360p', '480p', '720p', '://', 'Authorization', 'Conversion preset', 'DEBUG', 'ERROR', 'INFO', 'Settings', 'Video resolution', 'WARNING', 'YDD_DOWNLOAD_', 'YDD_NOTIFY_', 'YDD_PROXY_', 'YDD_SCHED_', 'before', 'cache', 'cache_dir', 'config.json', 'config_dir', 'downloads', 'http://', 'https://', 'ignore', 'output_dir', 'r', 'socks4://', 'socks5://', 'state', 'state_dir', 'url', 'utf-8', 'w', 'yadisk_oauth_token']

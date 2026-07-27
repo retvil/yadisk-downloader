@@ -1,0 +1,4 @@
+# file: D:\ya-downloader\yadisk-downloader\yadisk_downloader\core\auth.py
+# hypothesis_version: 6.151.11
+
+['&', '?', '?oauth_token=', 'Authorization', 'YandexAuth', 'disk.yandex', 'requests.Session']

@@ -1,0 +1,4 @@
+# file: D:\ya-downloader\yadisk-downloader\yadisk_downloader\events\__init__.py
+# hypothesis_version: 6.151.11
+
+['ConversionCompleted', 'ConversionFailed', 'ConversionStarted', 'DownloadCompleted', 'DownloadFailed', 'DownloadProgress', 'DownloadStarted', 'Event', 'EventBus', 'FolderScanCompleted', 'FolderScanStarted', 'QueueProcessStarted', 'StateSaved', 'get_event_bus', 'set_event_bus']

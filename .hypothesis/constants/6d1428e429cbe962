@@ -1,0 +1,4 @@
+# file: D:\ya-downloader\yadisk-downloader\yadisk_downloader\core\downloader.py
+# hypothesis_version: 6.151.11
+
+[100, 200, 206, 300, 416, 429, 500, 502, 503, 504, 600, 1000, 3600, 8192, 30000, '-c', '-http_proxy', '-i', '-y', '.', '.download-button', 'Content-Length', 'GET', 'HEAD', 'OPTIONS', 'Range', 'a[download]', 'ab', 'copy', 'document', 'domcontentloaded', 'http://', 'https://', 'image', 'load', 'md5', 'rb', 'wb']

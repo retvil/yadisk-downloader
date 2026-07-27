@@ -1,0 +1,4 @@
+# file: D:\ya-downloader\yadisk-downloader\yadisk_downloader\core\downloader.py
+# hypothesis_version: 6.151.11
+
+[300, 3600, 8192, '-c', '-http_proxy', '-i', '-y', '.', 'Unknown error', '_download_hls_ffmpeg', '_download_hls_python', 'compute_checksum', 'copy', 'document', 'download_file', 'download_from_api', 'download_hls', 'download_via_browser', 'md5', 'rb', 'verify_checksum', 'video']
