@@ -29,6 +29,7 @@ venv/
 *~
 .mypy_cache/
 .pytest_cache/
+.hypothesis/
 *.spec
 releases/
 yadisk-downloader-portable/
@@ -37,3 +38,4 @@ gui_screenshot*.png
 *.png
 *.pdf
 test_*.py
+.omo/

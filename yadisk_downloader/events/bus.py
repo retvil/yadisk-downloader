@@ -2,9 +2,10 @@
 
 import asyncio
 from collections import defaultdict
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable, Coroutine, Optional, TypeVar
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 
@@ -181,7 +182,7 @@ class EventBus:
 
 
 # Global event bus instance
-_event_bus: Optional[EventBus] = None
+_event_bus: EventBus | None = None
 
 
 def get_event_bus() -> EventBus:

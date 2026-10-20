@@ -1,9 +1,11 @@
 """Authentication module for Yandex Disk OAuth token support."""
 
 from __future__ import annotations
-from dataclasses import dataclass
-from typing import Optional
+
 import urllib.parse
+from dataclasses import dataclass
+
+import requests
 
 from yadisk_downloader.config.schema import get_settings
 
@@ -12,10 +14,10 @@ from yadisk_downloader.config.schema import get_settings
 class YandexAuth:
     """Yandex Disk authentication handler."""
 
-    token: Optional[str] = None
+    token: str | None = None
 
     @classmethod
-    def from_settings(cls) -> "YandexAuth":
+    def from_settings(cls) -> YandexAuth:
         """Create auth from global settings."""
         settings = get_settings()
         token = None
@@ -46,9 +48,8 @@ class YandexAuth:
         return f"{public_key}&oauth_token={urllib.parse.quote(self.token)}"
 
 
-def create_authenticated_session() -> "requests.Session":
+def create_authenticated_session() -> requests.Session:
     """Create requests session with OAuth headers."""
-    import requests
     session = requests.Session()
     auth = YandexAuth.from_settings()
     if auth.token:

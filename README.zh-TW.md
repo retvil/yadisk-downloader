@@ -113,6 +113,18 @@ python -m yadisk_downloader https://disk.yandex.ru/d/XXXXX --list
 python -m yadisk_downloader --gui
 ```
 
+基於 ttkbootstrap 的介面，附語言選擇器（10 種語言：俄語、英語、烏克蘭語、哈薩克語、德語、法語、西班牙語、波蘭語、土耳其語、中文）。語言選擇跨工作階段保留。
+
+GUI 功能：
+
+- 掃描公開連結並以核取方塊列出所有檔案
+- 檔案類型篩選（video、audio、document、...）
+- 資料夾篩選
+- 選擇影片解析度與轉換預設集
+- 兩級進度：目前檔案 + 整體進度
+- 下載中的取消按鈕
+- 中斷下載的續傳
+
 ## 轉換預設
 
 | 預設 | 編碼器 | 解析度 | 音訊 | 大小 | 用途 |

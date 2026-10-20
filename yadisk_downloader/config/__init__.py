@@ -1,22 +1,28 @@
-"""Configuration module exports."""
+"""Configuration module exports.
 
+Two config systems live here:
+- ``cli_config.Config`` — flat dataclass backed by ``~/.yadisk-downloader/config.json``,
+  used by the CLI.
+- ``schema.Settings`` — pydantic, env-based, used by plugins/core.
+"""
+
+from .cli_config import CONFIG_DIR, CONFIG_FILE, Config, get_config_path
 from .schema import (
-    Settings,
     DownloadSettings,
-    ProxySettings,
     NotificationSettings,
+    ProxySettings,
     SchedulerSettings,
-    get_settings,
+    Settings,
     get_config,
+    get_settings,
     reload_settings,
 )
 
-# Alias for backward compatibility
-Config = Settings
-get_config_path = get_settings
-
 __all__ = [
+    "CONFIG_DIR",
+    "CONFIG_FILE",
     "Config",
+    "get_config_path",
     "Settings",
     "DownloadSettings",
     "ProxySettings",
@@ -24,6 +30,5 @@ __all__ = [
     "SchedulerSettings",
     "get_settings",
     "get_config",
-    "get_config_path",
     "reload_settings",
 ]

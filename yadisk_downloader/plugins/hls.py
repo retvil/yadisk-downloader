@@ -3,17 +3,20 @@
 import os
 import subprocess
 from pathlib import Path
-from typing import Optional
 
+from yadisk_downloader.core.parallel_hls import download_hls_parallel
+from yadisk_downloader.core.safety import sanitize_url_for_log
+from yadisk_downloader.events import (
+    DownloadCompleted,
+    DownloadFailed,
+    DownloadProgress,
+    get_event_bus,
+)
 from yadisk_downloader.plugins.base import (
-    DownloadStrategy,
-    FileInfo,
     DownloadContext,
     DownloadResult,
+    FileInfo,
 )
-from yadisk_downloader.core.parallel_hls import download_hls_parallel
-from yadisk_downloader.core.safety import sanitize_url_for_log, build_proxy_dict
-from yadisk_downloader.events import get_event_bus, DownloadProgress, DownloadCompleted, DownloadFailed
 
 
 class HLSVideoStrategy:
@@ -33,8 +36,8 @@ class HLSVideoStrategy:
     ) -> DownloadResult:
         event_bus = get_event_bus()
         m3u8_url = file_info.m3u8_url
-        # Get ffmpeg path from settings
-        ffmpeg_path = getattr(context.settings, 'ffmpeg_path', None)
+        # Get ffmpeg path from context (populated by downloader)
+        ffmpeg_path = context.ffmpeg_path
 
         def progress_cb(downloaded: int, total: int):
             speed = downloaded / (total / 1024 / 1024) if total > 0 else 0
@@ -62,7 +65,7 @@ class HLSVideoStrategy:
             download_hls_parallel(
                 m3u8_url=m3u8_url,
                 output_path=dest,
-                workers=min(max(context.settings.download.workers, 1), 16),
+                workers=min(max(context.workers, 1), 16),
                 headers=context.oauth_headers or {},
                 progress_callback=progress_cb,
             )
@@ -104,7 +107,7 @@ class HLSVideoStrategy:
         ffmpeg_path: str,
         m3u8_url: str,
         output_path: str,
-        proxy_dict: Optional[dict] = None,
+        proxy_dict: dict | None = None,
     ) -> tuple[bool, int]:
         """Download HLS stream using ffmpeg."""
         os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)

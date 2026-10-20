@@ -1,15 +1,13 @@
 """Parallel folder download with asyncio semaphore."""
 
 import asyncio
-import os
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
-from yadisk_downloader.core.downloader import download_file
-from yadisk_downloader.plugins.base import FileInfo, get_registry
 from yadisk_downloader.config.schema import get_settings
-from yadisk_downloader.events import get_event_bus, DownloadStarted, DownloadProgress, DownloadCompleted, DownloadFailed
+from yadisk_downloader.core.downloader import download_file
+from yadisk_downloader.plugins.base import FileInfo
 
 
 @dataclass
@@ -37,7 +35,7 @@ class FolderDownloader:
         """
         self.max_concurrent_folders = max_concurrent_folders
         self.max_concurrent_files = max_concurrent_files
-        self._semaphore: Optional[asyncio.Semaphore] = None
+        self._semaphore: asyncio.Semaphore | None = None
 
     async def download_folders(
         self,
@@ -46,7 +44,7 @@ class FolderDownloader:
         base_url: str,
         output_dir: Path,
         resolution: str = "720p",
-        progress_callback: Optional[callable] = None,
+        progress_callback: Callable | None = None,
     ) -> list[FolderDownloadResult]:
         """
         Download multiple folders in parallel.
@@ -85,21 +83,21 @@ class FolderDownloader:
         base_url: str,
         output_dir: Path,
         resolution: str,
-        progress_callback: Optional[callable] = None,
+        progress_callback: Callable | None = None,
     ) -> FolderDownloadResult:
         """Download all files in a single folder."""
-        from yadisk_downloader.core.browser import collect_m3u8_urls
         from yadisk_downloader.core.api import get_download_url
+        from yadisk_downloader.core.browser import collect_m3u8_urls
 
         if not files:
             return FolderDownloadResult(folder, 0, 0, 0, 0)
 
-        # Collect m3u8 URLs for videos
-        m3u8_map = collect_m3u8_urls(base_url, files, resolution)
+        # Collect m3u8 URLs for videos — blocking network calls run in threads
+        # so that parallel folders actually overlap (coroutines without awaits
+        # would run sequentially inside gather())
+        m3u8_map = await asyncio.to_thread(collect_m3u8_urls, base_url, files, resolution)
 
         settings = get_settings()
-        registry = get_registry()
-        event_bus = get_event_bus()
 
         folder_output = output_dir / folder
         folder_output.mkdir(parents=True, exist_ok=True)
@@ -119,29 +117,30 @@ class FolderDownloader:
                 path=f["path"],
                 size=f["size"],
                 file_type=ft,
-                download_url=get_download_url(base_url, f["path"]),
+                download_url=await asyncio.to_thread(get_download_url, base_url, f["path"]),
                 m3u8_url=m3u8_map.get(f["path"]) if ft == "video" else None,
             )
 
-            # Progress callback for this file
-            def make_progress_cb(file_idx: int, file_total: int):
+            # Progress callback for this file (bind loop vars via args — B023)
+            def make_progress_cb(file_idx: int, file_total: int, file_name: str):
                 def progress_cb(downloaded: int, total: int):
                     if progress_callback:
                         progress_callback(
                             folder,
                             file_idx,
                             file_total,
-                            f["name"],
+                            file_name,
                             downloaded,
                             total,
                         )
                 return progress_cb
 
             try:
-                ok, size = download_file(
+                ok, size = await asyncio.to_thread(
+                    download_file,
                     file_info=file_info,
                     dest=dest,
-                    progress_callback=make_progress_cb(i + 1, total_files),
+                    progress_callback=make_progress_cb(i + 1, total_files, f["name"]),
                     resume=True,
                     workers=settings.download.workers,
                 )
@@ -174,7 +173,7 @@ async def download_folders_parallel(
     resolution: str = "720p",
     max_concurrent_folders: int = 4,
     max_concurrent_files: int = 4,
-    progress_callback: Optional[callable] = None,
+    progress_callback: Callable | None = None,
 ) -> list[FolderDownloadResult]:
     """
     High-level function to download multiple folders in parallel.
@@ -215,7 +214,7 @@ def download_folders_sync(
     resolution: str = "720p",
     max_concurrent_folders: int = 4,
     max_concurrent_files: int = 4,
-    progress_callback: Optional[callable] = None,
+    progress_callback: Callable | None = None,
 ) -> list[FolderDownloadResult]:
     """Synchronous wrapper for download_folders_parallel."""
     return asyncio.run(download_folders_parallel(

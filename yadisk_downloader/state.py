@@ -1,8 +1,8 @@
 """Download state tracking for resume support with crash resilience."""
 
+import hashlib
 import json
 import time
-import hashlib
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -18,7 +18,7 @@ class FileState:
     name: str
     size: int
     downloaded: int
-    checksum: Optional[str] = None
+    checksum: str | None = None
     status: str = "pending"  # pending, downloading, done, failed
     timestamp: float = 0.0
 
@@ -49,7 +49,7 @@ class DownloadState:
         url_hash = hashlib.md5(self.url.encode()).hexdigest()[:12]
         return self.state_dir / f"state_{url_hash}.json"
 
-    def save(self, path: Optional[Path] = None):
+    def save(self, path: Path | None = None):
         """Save state to file atomically."""
         path = path or self._get_state_file()
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -68,7 +68,7 @@ class DownloadState:
         self._dirty_files.clear()
 
     @classmethod
-    def load(cls, path: Optional[Path] = None, url: Optional[str] = None) -> Optional["DownloadState"]:
+    def load(cls, path: Path | None = None, url: str | None = None) -> Optional["DownloadState"]:
         """Load state from file. Returns None if not found or corrupt."""
         if path is None:
             if url is None:
@@ -93,7 +93,7 @@ class DownloadState:
         except Exception:
             return None
 
-    def get_file(self, file_path: str) -> Optional[FileState]:
+    def get_file(self, file_path: str) -> FileState | None:
         """Get state for a specific file."""
         return self.files.get(file_path)
 
@@ -120,7 +120,7 @@ class DownloadState:
             self.save()
             self._bytes_since_flush = 0
 
-    def clear(self, path: Optional[Path] = None):
+    def clear(self, path: Path | None = None):
         """Clear state file."""
         path = path or self._get_state_file()
         if path.exists():

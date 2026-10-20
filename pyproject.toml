@@ -16,7 +16,7 @@ strict_optional = true
 [[tool.mypy.overrides]]
 module = [
     "playwright.*",
-    "customtkinter",
+    "ttkbootstrap",
     "imageio_ffmpeg",
 ]
 ignore_missing_imports = true
@@ -72,7 +72,7 @@ ignore = [
     "E501",  # line too long (handled by formatter)
     "B008",  # do not perform function calls in argument defaults
 ]
-per-file-ignores = { "tests/*" = ["T201", "T203"] }  # allow print in tests
+per-file-ignores = { "tests/*" = ["T201", "T203"], "yadisk_downloader/cli.py" = ["T201"], "yadisk_downloader/__main__.py" = ["T201"], "yadisk_downloader/scheduler.py" = ["T201"], "yadisk_downloader/setup_wizard.py" = ["T201"], "yadisk_downloader/gui.py" = ["T201"], "yadisk_downloader/queue.py" = ["T201"] }  # CLI output is the product
 
 [tool.ruff.format]
 quote-style = "double"

@@ -1,22 +1,21 @@
 """Direct API download strategy with connection pooling, retry, and resume."""
 
-import os
 import time
 from pathlib import Path
-from typing import Optional
 
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+from yadisk_downloader.events import (
+    DownloadProgress,
+    get_event_bus,
+)
 from yadisk_downloader.plugins.base import (
-    DownloadStrategy,
-    FileInfo,
     DownloadContext,
     DownloadResult,
+    FileInfo,
 )
-from yadisk_downloader.core.safety import sanitize_url_for_log, build_proxy_dict
-from yadisk_downloader.events import get_event_bus, DownloadProgress, DownloadCompleted, DownloadFailed
 
 
 class APIFileStrategy:
@@ -72,12 +71,9 @@ class APIFileStrategy:
         if proxy_dict:
             session.proxies = proxy_dict
 
-        # SSL verification disabled for Yandex
-        session.verify = False
-
         # Check for partial download
         downloaded = 0
-        if context.settings.download.resume and dest.exists():
+        if context.resume and dest.exists():
             downloaded = dest.stat().st_size
 
         for attempt in range(3):

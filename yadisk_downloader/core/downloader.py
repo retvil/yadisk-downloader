@@ -3,32 +3,25 @@
 import hashlib
 import os
 import subprocess
-import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Optional, Callable
 
-import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
-
-from .parallel_hls import download_hls_parallel
-from .safety import build_proxy_dict
-from .auth import get_api_headers
-
-from yadisk_downloader.plugins.base import (
-    get_registry,
-    FileInfo,
-    DownloadContext,
-    DownloadResult,
-)
+from yadisk_downloader.config.schema import get_settings
 from yadisk_downloader.events import (
-    get_event_bus,
-    DownloadStarted,
-    DownloadProgress,
     DownloadCompleted,
     DownloadFailed,
+    DownloadStarted,
+    get_event_bus,
 )
-from yadisk_downloader.config.schema import get_settings
+from yadisk_downloader.plugins.base import (
+    DownloadContext,
+    DownloadResult,
+    FileInfo,
+    get_registry,
+)
+
+from .auth import get_api_headers
+from .safety import build_proxy_dict
 
 
 def compute_checksum(file_path: str, algorithm: str = "md5") -> str:
@@ -66,11 +59,11 @@ def verify_checksum(file_path: str, expected_checksum: str, algorithm: str = "md
 def download_file(
     file_info: FileInfo,
     dest: Path,
-    proxy: Optional[str] = None,
-    progress_callback: Optional[Callable[[int, int], None]] = None,
+    proxy: str | None = None,
+    progress_callback: Callable[[int, int], None] | None = None,
     resume: bool = True,
     workers: int = 4,
-    ffmpeg_path: Optional[str] = None,
+    ffmpeg_path: str | None = None,
     page=None,  # Playwright page for browser strategies
 ) -> tuple[bool, int]:
     """Download a file using the plugin system.
@@ -110,6 +103,9 @@ def download_file(
         proxy_dict=build_proxy_dict(proxy) if proxy else None,
         oauth_headers=get_api_headers(),
         progress_callback=progress_callback,
+        ffmpeg_path=ffmpeg_path,
+        workers=workers,
+        resume=resume,
     )
 
     # Emit started event

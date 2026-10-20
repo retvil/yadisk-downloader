@@ -1,7 +1,6 @@
 """Yandex Disk API — file discovery and download for public links."""
 
 import json
-import ssl
 import time
 import urllib.parse
 import urllib.request
@@ -16,66 +15,69 @@ def list_files(
 ) -> list[dict]:
     """List all files in a public Yandex Disk folder.
 
+    Recursively walks all subfolders and handles pagination (>1000 items).
+
     Args:
         public_key: Yandex Disk public link.
         include_types: If provided, only include these file types.
         exclude_types: If provided, exclude these file types.
 
     Returns list of dicts: {name, path, size, folder, file_type}
+    where ``folder`` is the relative path inside the public folder
+    ("" for root files, "Sub" or "Sub/Nested" otherwise).
     """
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-
-    def _list_dir(path: str = "/") -> list[dict]:
+    def _fetch_page(path: str, offset: int) -> dict:
         for attempt in range(3):
             try:
                 params = urllib.parse.urlencode({
                     "public_key": public_key,
                     "path": path,
                     "limit": 1000,
+                    "offset": offset,
                 })
                 url = f"https://cloud-api.yandex.net/v1/disk/public/resources?{params}"
                 req = urllib.request.Request(url, headers={"Accept": "application/json"})
-                with urllib.request.urlopen(req, context=ctx, timeout=30) as resp:
-                    data = json.loads(resp.read().decode())
-                    return data.get("_embedded", {}).get("items", [])
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    return json.loads(resp.read().decode())
             except Exception:
                 if attempt < 2:
                     time.sleep(2 * (attempt + 1))
                 else:
                     raise
 
-    folders = []
-    files = []
+    def _list_dir(path: str = "/") -> list[dict]:
+        """List all items in a directory, following pagination."""
+        items: list[dict] = []
+        offset = 0
+        while True:
+            embedded = _fetch_page(path, offset).get("_embedded", {})
+            batch = embedded.get("items", [])
+            items.extend(batch)
+            total = embedded.get("total")
+            offset += len(batch)
+            if not batch or (total is not None and offset >= total):
+                break
+        return items
 
-    for item in _list_dir("/"):
-        if item["type"] == "dir":
-            folders.append(item["name"])
-        elif item["type"] == "file":
-            name = item["name"]
-            if matches_filter(name, include_types, exclude_types):
-                files.append({
-                    "name": name,
-                    "path": item["path"],
-                    "size": item.get("size", 0),
-                    "folder": "",
-                    "file_type": get_file_type(name),
-                })
+    files: list[dict] = []
 
-    for folder in folders:
-        for item in _list_dir(f"/{folder}"):
-            if item["type"] == "file":
+    def _walk(dir_path: str, folder_label: str) -> None:
+        for item in _list_dir(dir_path):
+            if item["type"] == "dir":
+                sub_label = f"{folder_label}/{item['name']}" if folder_label else item["name"]
+                _walk(f"/{sub_label}", sub_label)
+            elif item["type"] == "file":
                 name = item["name"]
                 if matches_filter(name, include_types, exclude_types):
                     files.append({
                         "name": name,
                         "path": item["path"],
                         "size": item.get("size", 0),
-                        "folder": folder,
+                        "folder": folder_label,
                         "file_type": get_file_type(name),
                     })
 
+    _walk("/", "")
     return files
 
 
@@ -89,10 +91,6 @@ def get_download_url(public_key: str, file_path: str) -> str | None:
     Returns:
         Download URL string, or None if failed.
     """
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-
     params = urllib.parse.urlencode({
         "public_key": public_key,
         "path": file_path,
@@ -102,7 +100,7 @@ def get_download_url(public_key: str, file_path: str) -> str | None:
     for attempt in range(3):
         try:
             req = urllib.request.Request(url, headers={"Accept": "application/json"})
-            with urllib.request.urlopen(req, context=ctx, timeout=30) as resp:
+            with urllib.request.urlopen(req, timeout=30) as resp:
                 data = json.loads(resp.read().decode())
                 return data.get("href")
         except Exception:
@@ -114,14 +112,10 @@ def get_download_url(public_key: str, file_path: str) -> str | None:
 
 def list_folders(public_key: str) -> list[str]:
     """List all subfolder names in a public Yandex Disk folder."""
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-
     params = urllib.parse.urlencode({"public_key": public_key, "path": "/", "limit": 1000})
     url = f"https://cloud-api.yandex.net/v1/disk/public/resources?{params}"
     req = urllib.request.Request(url, headers={"Accept": "application/json"})
-    with urllib.request.urlopen(req, context=ctx, timeout=30) as resp:
+    with urllib.request.urlopen(req, timeout=30) as resp:
         data = json.loads(resp.read().decode())
 
     return [

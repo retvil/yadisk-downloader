@@ -1,8 +1,9 @@
 """Dependency injection container for service management."""
 
 from __future__ import annotations
-from typing import Any, Callable, TypeVar, Generic
-from contextlib import contextmanager
+
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 
@@ -90,17 +91,11 @@ def set_container(container: Container) -> None:
 def _setup_default_services(container: Container) -> None:
     """Register default services."""
     from yadisk_downloader.config.schema import get_settings
-    from yadisk_downloader.events.bus import get_event_bus
-    from yadisk_downloader.core.cache import Cache, M3U8_CACHE
+    from yadisk_downloader.core.cache import M3U8_CACHE, Cache
+    from yadisk_downloader.events.bus import EventBus, get_event_bus
 
     settings = get_settings()
     container.register_singleton(type(settings), settings)
     container.register_singleton(EventBus, get_event_bus())
     container.register_singleton(Cache, M3U8_CACHE)
     # HTTP client will be registered on first use
-
-
-# Type imports for annotations
-from yadisk_downloader.config.schema import Settings
-from yadisk_downloader.events.bus import EventBus
-from yadisk_downloader.core.cache import Cache

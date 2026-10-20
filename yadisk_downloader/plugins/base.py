@@ -1,11 +1,12 @@
 """Plugin system base classes and registry."""
 
 from __future__ import annotations
-from dataclasses import dataclass
-from typing import Protocol, Optional, TypeVar
-from pathlib import Path
 
-from yadisk_downloader.events import EventBus, DownloadProgress, DownloadCompleted, DownloadFailed
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Protocol, TypeVar
+
+from yadisk_downloader.events import EventBus
 
 T = TypeVar("T")
 
@@ -17,11 +18,11 @@ class FileInfo:
     path: str  # Path on Yandex Disk
     size: int
     file_type: str  # video, audio, image, document, etc.
-    mime_type: Optional[str] = None
-    folder: Optional[str] = None
-    download_url: Optional[str] = None  # Direct API URL
-    m3u8_url: Optional[str] = None  # HLS playlist URL
-    sha256: Optional[str] = None
+    mime_type: str | None = None
+    folder: str | None = None
+    download_url: str | None = None  # Direct API URL
+    m3u8_url: str | None = None  # HLS playlist URL
+    sha256: str | None = None
 
 
 @dataclass(frozen=True)
@@ -31,20 +32,23 @@ class DownloadContext:
     event_bus: EventBus
     cache_dir: Path
     state_dir: Path
-    proxy_dict: Optional[dict[str, str]] = None
-    oauth_headers: Optional[dict[str, str]] = None
-    progress_callback: Optional[callable] = None
+    proxy_dict: dict[str, str] | None = None
+    oauth_headers: dict[str, str] | None = None
+    progress_callback: callable | None = None
+    ffmpeg_path: str | None = None  # Path to ffmpeg binary (HLS strategy)
+    workers: int = 4  # Parallel HLS workers
+    resume: bool = True  # Resume interrupted downloads
 
 
 @dataclass(frozen=True)
 class DownloadResult:
     """Result of a download attempt."""
     success: bool
-    path: Optional[Path] = None
+    path: Path | None = None
     size: int = 0
-    checksum: Optional[str] = None
-    error: Optional[str] = None
-    strategy_used: Optional[str] = None
+    checksum: str | None = None
+    error: str | None = None
+    strategy_used: str | None = None
 
 
 class DownloadStrategy(Protocol):
@@ -90,7 +94,7 @@ class StrategyRegistry:
                 return True
         return False
 
-    def get_for_file(self, file_info: FileInfo) -> Optional[DownloadStrategy]:
+    def get_for_file(self, file_info: FileInfo) -> DownloadStrategy | None:
         """Get the best strategy for a file."""
         for strategy in self._strategies:
             if strategy.can_handle(file_info):
@@ -128,10 +132,10 @@ def set_registry(registry: StrategyRegistry) -> None:
 def _register_builtin_strategies(registry: StrategyRegistry) -> None:
     """Register built-in strategies."""
     # Import here to avoid circular imports
-    from yadisk_downloader.plugins.hls import HLSVideoStrategy
     from yadisk_downloader.plugins.api import APIFileStrategy
-    from yadisk_downloader.plugins.docviewer import DocviewerStrategy
     from yadisk_downloader.plugins.browser import BrowserStrategy
+    from yadisk_downloader.plugins.docviewer import DocviewerStrategy
+    from yadisk_downloader.plugins.hls import HLSVideoStrategy
 
     registry.register(HLSVideoStrategy())
     registry.register(APIFileStrategy())

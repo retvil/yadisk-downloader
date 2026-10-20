@@ -1,17 +1,20 @@
 """Browser download strategy using Playwright with OAuth support."""
 
 from pathlib import Path
-from typing import Optional
 
+from yadisk_downloader.core.auth import enhance_api_url
+from yadisk_downloader.core.safety import sanitize_url_for_log
+from yadisk_downloader.events import (
+    DownloadCompleted,
+    DownloadFailed,
+    DownloadStarted,
+    get_event_bus,
+)
 from yadisk_downloader.plugins.base import (
-    DownloadStrategy,
-    FileInfo,
     DownloadContext,
     DownloadResult,
+    FileInfo,
 )
-from yadisk_downloader.core.auth import get_api_headers, enhance_api_url
-from yadisk_downloader.events import get_event_bus, DownloadProgress, DownloadCompleted, DownloadFailed
-from yadisk_downloader.core.safety import sanitize_url_for_log
 
 
 class BrowserStrategy:
@@ -32,20 +35,20 @@ class BrowserStrategy:
     ) -> DownloadResult:
         """Browser download requires Playwright page - placeholder for direct use."""
         event_bus = get_event_bus()
-        
+
         # Enhance URL with OAuth token
         enhanced_url = file_info.path
         if file_info.download_url:
             enhanced_url = enhance_api_url(file_info.download_url)
         elif file_info.path:
             enhanced_url = enhance_api_url(file_info.path)
-        
+
         event_bus.emit(DownloadStarted(
             url=sanitize_url_for_log(enhanced_url),
             file_path=str(dest),
             file_size=file_info.size,
         ))
-        
+
         event_bus.emit(DownloadFailed(
             url=sanitize_url_for_log(enhanced_url),
             file_path=str(dest),
@@ -62,7 +65,7 @@ class BrowserStrategy:
         if file_info.download_url:
             return enhance_api_url(file_info.download_url)
         return enhance_api_url(file_info.path)
-    
+
     def get_default_options(self) -> dict:
         return {}
 
@@ -74,40 +77,39 @@ def download_via_browser_with_oauth(
     progress_callback=None,
 ) -> tuple[bool, int]:
     """Download file using Playwright page with OAuth token in URL.
-    
+
     Args:
         page: Playwright page object
         file_info: FileInfo with download_url or path
         dest: Destination path
         progress_callback: Optional callback(downloaded, total)
-        
+
     Returns:
         Tuple of (success, size_bytes)
     """
-    import os
-    
+
     dest.parent.mkdir(parents=True, exist_ok=True)
-    
+
     # Get enhanced URL with OAuth token
     url = file_info.download_url or file_info.path
     enhanced_url = enhance_api_url(url)
-    
+
     event_bus = get_event_bus()
     sanitized_url = sanitize_url_for_log(enhanced_url)
-    
+
     event_bus.emit(DownloadStarted(
         url=sanitized_url,
         file_path=str(dest),
         file_size=file_info.size,
     ))
-    
+
     try:
         with page.expect_download(timeout=300000) as download_info:
             page.goto(enhanced_url, wait_until="load", timeout=60000)
-        
+
         download = download_info.value
         download.save_as(str(dest))
-        
+
         if dest.exists():
             size = dest.stat().st_size
             event_bus.emit(DownloadCompleted(
@@ -116,14 +118,14 @@ def download_via_browser_with_oauth(
                 size=size,
             ))
             return True, size
-        
+
         event_bus.emit(DownloadFailed(
             url=sanitized_url,
             file_path=str(dest),
             error="Download completed but file not found",
         ))
         return False, 0
-        
+
     except Exception as e:
         event_bus.emit(DownloadFailed(
             url=sanitized_url,
@@ -142,7 +144,7 @@ def download_via_docviewer_with_oauth(
     timeout: int = 60,
 ) -> tuple[bool, int]:
     """Download via Yandex Docviewer with OAuth token support.
-    
+
     Args:
         page: Playwright page object
         public_key: Yandex Disk public folder URL
@@ -150,26 +152,25 @@ def download_via_docviewer_with_oauth(
         dest: Destination path
         file_type: File type (document, image, etc.)
         timeout: Max seconds to wait for rendering
-        
+
     Returns:
         Tuple of (success, size_bytes)
     """
     import time
-    import os
-    
+
     dest.parent.mkdir(parents=True, exist_ok=True)
-    
+
     # Enhance public key with OAuth token
     enhanced_public_key = enhance_api_url(public_key)
-    
+
     event_bus = get_event_bus()
-    
+
     event_bus.emit(DownloadStarted(
         url=enhanced_public_key,
         file_path=str(dest),
         file_size=0,
     ))
-    
+
     try:
         # Step 1: Load the folder page to get store-prefetch data
         page.goto(enhanced_public_key, wait_until="domcontentloaded", timeout=30000)

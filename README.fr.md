@@ -113,6 +113,18 @@ python -m yadisk_downloader https://disk.yandex.ru/d/XXXXX --list
 python -m yadisk_downloader --gui
 ```
 
+Interface basée sur ttkbootstrap avec sélecteur de langue (10 langues : russe, anglais, ukrainien, kazakh, allemand, français, espagnol, polonais, turc, chinois). Le choix de la langue est conservé entre les sessions.
+
+Fonctionnalités de la GUI :
+
+- Scanner un lien public et lister tous les fichiers avec cases à cocher
+- Filtre par type de fichier (video, audio, document, ...)
+- Filtre par dossier
+- Choix de la résolution vidéo et du preset de conversion
+- Progression à deux niveaux : fichier en cours + progression globale
+- Bouton Annuler pendant le téléchargement
+- Reprise des téléchargements interrompus
+
 ## Presets de conversion
 
 | Preset | Codec | Résolution | Audio | Taille | Idéal pour |

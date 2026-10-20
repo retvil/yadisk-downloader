@@ -18,13 +18,11 @@ from .core.downloader import (
 )
 from .core.file_types import list_types
 from .notify import notify_download_complete
+from .plugins.base import FileInfo
 from .queue import DownloadQueue
 from .scheduler import ScheduleConfig, is_running, remove_pid, save_pid
 from .state import DownloadState, get_state_file
 from .utils import find_ffmpeg, format_size
-from .plugins.base import FileInfo, get_registry
-from .config.schema import get_settings
-from .events import get_event_bus, DownloadProgress, DownloadCompleted, DownloadFailed
 
 
 def _show_pdf_only_warning(original_name: str, pdf_name: str):
@@ -154,7 +152,7 @@ def _queue_process(args, config: Config):
 def _schedule_add(args):
     """Add scheduled download."""
     schedule = ScheduleConfig.load()
-    entry = schedule.add(
+    schedule.add(
         url=args.schedule_url,
         cron=args.cron,
         folder=args.folder,
@@ -267,9 +265,6 @@ def _run_download(args, config: Config):
     resume = not args.no_resume
     checksum = args.checksum
 
-    # Get settings
-    settings = get_settings()
-
     # Load or create download state
     state_file = get_state_file(args.url)
     state = DownloadState.load(state_file) or DownloadState(url=args.url)
@@ -282,9 +277,12 @@ def _run_download(args, config: Config):
         print(f"ERROR: Failed to list files: {e}")
         sys.exit(1)
 
-    # Filter by folder
+    # Filter by folder (exact match or any nested subfolder of it)
     if args.folder:
-        files = [f for f in files if f["folder"] == args.folder]
+        files = [
+            f for f in files
+            if f["folder"] == args.folder or f["folder"].startswith(args.folder + "/")
+        ]
         if not files:
             print(f"No files found in folder '{args.folder}'")
             sys.exit(1)
@@ -350,10 +348,6 @@ def _run_download(args, config: Config):
 
     ffmpeg = find_ffmpeg()
 
-    # Initialize event bus for progress tracking
-    from .events import get_event_bus, DownloadProgress
-    event_bus = get_event_bus()
-
     def progress(downloaded, total):
         if total > 0:
             pct = downloaded / total * 100
@@ -373,52 +367,38 @@ def _run_download(args, config: Config):
 
         os.makedirs(os.path.dirname(dest) or ".", exist_ok=True)
 
-        # Build FileInfo for plugin system
+        # Build FileInfo once (frozen dataclass — all fields at construction)
+        download_url = get_download_url(args.url, f["path"]) or None
+        m3u8_url = None
+        if ft == "video":
+            try:
+                m3u8_url = collect_m3u8_urls(args.url, [f], resolution).get(f["path"])
+            except Exception:
+                pass
+
         file_info = FileInfo(
             name=f["name"],
             path=f["path"],
             size=f["size"],
-            file_type=f.get("file_type", "other"),
+            file_type=ft,
+            download_url=download_url,
+            m3u8_url=m3u8_url,
         )
 
-        # Add download_url and m3u8_url if available
-        download_url = get_download_url(args.url, f["path"])
-        if download_url:
-            file_info.download_url = download_url
-
-        # For videos, try to get m3u8 URL
-        if ft == "video":
-            try:
-                m3u8_map = collect_m3u8_urls(args.url, [f], resolution)
-                m3u8 = m3u8_map.get(f["path"])
-                if m3u8:
-                    file_info.m3u8_url = m3u8
-            except Exception:
-                pass
-
         # Download using plugin system
-        dest_path = Path(dest)
         ok_dl = False
         size = 0
 
         try:
-            success, size = download_file(
-                file_info=FileInfo(
-                    name=f["name"],
-                    path=f["path"],
-                    size=f["size"],
-                    file_type=f.get("file_type", "other"),
-                    download_url=get_download_url(args.url, f["path"]) or None,
-                    m3u8_url=collect_m3u8_urls(args.url, [f], resolution).get(f["path"]) if ft == "video" else None,
-                ),
+            ok_dl, size = download_file(
+                file_info=file_info,
                 dest=Path(dest),
                 proxy=proxy,
                 progress_callback=progress,
                 resume=resume,
-                workers=4,  # TODO: make configurable
+                workers=args.workers or config.workers or 4,
+                ffmpeg_path=ffmpeg,
             )
-            ok_dl = success
-            size = size
         except Exception as e:
             print(f"    Download error: {e}")
             ok_dl = False

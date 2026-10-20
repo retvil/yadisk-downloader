@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.3.0] - 2026-10-20
+
+### Hinzugefügt
+- **GUI auf ttkbootstrap** — leichtes modernes Toolkit statt customtkinter (weniger Abhängigkeiten, natives Aussehen)
+- **10 Oberflächensprachen** — Russisch, Englisch, Ukrainisch, Kasachisch, Deutsch, Französisch, Spanisch, Polnisch, Türkisch, Chinesisch; Sprachauswahl in der GUI, Auswahl wird zwischen Sitzungen gespeichert (`~/.yadisk-downloader/gui.json`)
+- **Abbrechen-Button** — bricht den Download zwischen Dateien und innerhalb einer Datei ab
+- **Zweistufiger Fortschritt** — „Datei 3/17: Name — 45,2 %" + Gesamtfortschrittsbalken ohne Sprünge
+- **Dateityp-Filter in der GUI** — Kombobox „Typ: Alle Typen / video / audio / ..."
+- **Platzhalter** — Hinweise in der leeren Dateiliste und im Link-Eingabefeld
+- **Tooltips** — für „Original löschen" und Konvertierungspreset
+- **Übersetzungsmodul** — `translations.py`: 37 Schlüssel × 10 Sprachen, Englisch-Fallback, automatische Spracherkennung
+
+### Behoben
+- **TLS-Verifizierung** — Zertifikatsprüfung in allen HTTP-Anfragen aktiviert
+- **API-Rekursion und Paginierung** — korrektes Durchlaufen tiefer Ordner und großer Dateilisten
+- **Escaping in Benachrichtigungen** — Sonderzeichen in Dateinamen beschädigen Benachrichtigungen nicht mehr
+- **HLS-Segmente auf Festplatte** — Segmente werden in Part-Dateien statt RAM geschrieben (kein OOM bei großen Videos)
+- **Nicht-blockierender Ordner-Download** — `FolderDownloader` auf `asyncio.to_thread` umgestellt
+- **GUI** — 14 Korrekturen: Button-Reihenfolge, Scrollbar-Ausblendung, Fehler in messagebox, Wheel-Scroll nur über der Liste, Auswahl bleibt beim Sprachwechsel erhalten, u.a.
+
+### Geändert
+- **requirements.txt** — `customtkinter` → `ttkbootstrap`
+- **build.py** — PyInstaller baut ttkbootstrap, Version auf 1.3.0 synchronisiert
+
 ## [1.1.1] - 2026-07-27
 
 ### Hinzugefügt

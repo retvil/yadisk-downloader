@@ -2,10 +2,11 @@
 
 import os
 from pathlib import Path
-from typing import Optional, Literal
+from typing import Literal
+
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic.types import SecretStr
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class DownloadSettings(BaseSettings):
@@ -24,7 +25,7 @@ class DownloadSettings(BaseSettings):
     resume: bool = Field(default=True, description="Resume interrupted downloads")
     checksum: bool = Field(default=False, description="Verify MD5 after download")
     delete_original: bool = Field(default=False, description="Delete original after conversion")
-    preset: Optional[str] = Field(default=None, description="Conversion preset")
+    preset: str | None = Field(default=None, description="Conversion preset")
     max_retries: int = Field(default=3, ge=0, le=10)
     retry_backoff: float = Field(default=1.0, ge=0.1, le=60.0)
 
@@ -46,13 +47,13 @@ class ProxySettings(BaseSettings):
     )
 
     enabled: bool = Field(default=False)
-    url: Optional[str] = Field(default=None, description="Proxy URL (http://user:pass@host:port)")
-    auth_username: Optional[str] = Field(default=None)
-    auth_password: Optional[str] = Field(default=None)
+    url: str | None = Field(default=None, description="Proxy URL (http://user:pass@host:port)")
+    auth_username: str | None = Field(default=None)
+    auth_password: str | None = Field(default=None)
 
     @field_validator("url", mode="before")
     @classmethod
-    def parse_proxy_url(cls, v: Optional[str]) -> Optional[str]:
+    def parse_proxy_url(cls, v: str | None) -> str | None:
         if v is None or v == "":
             return None
         if not any(v.startswith(p) for p in ("http://", "https://", "socks4://", "socks5://")):
@@ -60,7 +61,7 @@ class ProxySettings(BaseSettings):
         return v
 
     @property
-    def proxy_dict(self) -> Optional[dict[str, str]]:
+    def proxy_dict(self) -> dict[str, str] | None:
         """Build proxy dict for requests."""
         if not self.url:
             return None
@@ -84,9 +85,9 @@ class NotificationSettings(BaseSettings):
     )
 
     enabled: bool = Field(default=False)
-    telegram_bot_token: Optional[str] = Field(default=None)
-    telegram_chat_id: Optional[str] = Field(default=None)
-    webhook_url: Optional[str] = Field(default=None)
+    telegram_bot_token: str | None = Field(default=None)
+    telegram_chat_id: str | None = Field(default=None)
+    webhook_url: str | None = Field(default=None)
 
 
 class SchedulerSettings(BaseSettings):
@@ -117,7 +118,7 @@ class Settings(BaseSettings):
     scheduler: SchedulerSettings = Field(default_factory=SchedulerSettings)
 
     # OAuth token for private folders / higher limits
-    yadisk_oauth_token: Optional[SecretStr] = Field(default=None, description="Yandex Disk OAuth token")
+    yadisk_oauth_token: SecretStr | None = Field(default=None, description="Yandex Disk OAuth token")
 
     # App-level
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
@@ -157,7 +158,7 @@ class Settings(BaseSettings):
         self.config_dir.mkdir(parents=True, exist_ok=True)
         return self.config_dir / "config.json"
 
-    def save(self, path: Optional[Path] = None) -> None:
+    def save(self, path: Path | None = None) -> None:
         """Save config to JSON file."""
         path = path or self.get_config_path()
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -170,7 +171,7 @@ class Settings(BaseSettings):
             json.dump(data, f, ensure_ascii=False, indent=2, default=str)
 
     @classmethod
-    def load(cls, path: Optional[Path] = None) -> "Settings":
+    def load(cls, path: Path | None = None) -> "Settings":
         """Load config from JSON file."""
         path = path or cls().get_config_path()
         if path.exists():

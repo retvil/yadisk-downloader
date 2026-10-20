@@ -123,17 +123,44 @@ class ScheduleConfig:
             print(f"     Cron: {entry.cron} | Next: {next_run}")
 
 
+def _process_exists(pid: int) -> bool:
+    """Check if a process with the given PID exists, without killing it.
+
+    On Windows ``os.kill(pid, 0)`` calls TerminateProcess and would kill an
+    unrelated process reusing that PID — use OpenProcess query instead.
+    """
+    if os.name == "nt":
+        import ctypes
+
+        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+        kernel32 = ctypes.windll.kernel32
+        handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+        if handle:
+            kernel32.CloseHandle(handle)
+            return True
+        return False
+    try:
+        os.kill(pid, 0)  # Signal 0 checks existence without sending anything
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True  # Process exists but belongs to another user
+
+
 def is_running() -> bool:
     """Check if scheduler is already running."""
     if not PID_FILE.exists():
         return False
     try:
         pid = int(PID_FILE.read_text().strip())
-        os.kill(pid, 0)  # Check if process exists
-        return True
-    except (ProcessLookupError, ValueError):
+    except ValueError:
         PID_FILE.unlink(missing_ok=True)
         return False
+    if _process_exists(pid):
+        return True
+    PID_FILE.unlink(missing_ok=True)
+    return False
 
 
 def save_pid():

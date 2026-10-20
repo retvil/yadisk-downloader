@@ -2,6 +2,17 @@
 
 import platform
 import subprocess
+from xml.sax.saxutils import escape as xml_escape
+
+
+def _ps_escape(text: str) -> str:
+    """Escape text for interpolation inside a PowerShell expandable here-string."""
+    return text.replace("`", "``").replace("$", "`$")
+
+
+def _applescript_escape(text: str) -> str:
+    """Escape text for an AppleScript double-quoted string literal."""
+    return text.replace("\\", "\\\\").replace('"', '\\"')
 
 
 def send_notification(title: str, message: str) -> bool:
@@ -18,7 +29,10 @@ def send_notification(title: str, message: str) -> bool:
 
     try:
         if system == "Windows":
-            # Use PowerShell toast notification
+            # XML-escape first (LoadXml), then PowerShell-escape ($ and ` would
+            # be interpolated inside the expandable here-string)
+            safe_title = _ps_escape(xml_escape(title))
+            safe_message = _ps_escape(xml_escape(message))
             ps_cmd = f"""
             [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
             [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom, ContentType = WindowsRuntime] | Out-Null
@@ -27,8 +41,8 @@ def send_notification(title: str, message: str) -> bool:
             <toast>
                 <visual>
                     <binding template="ToastGeneric">
-                        <text>{title}</text>
-                        <text>{message}</text>
+                        <text>{safe_title}</text>
+                        <text>{safe_message}</text>
                     </binding>
                 </visual>
             </toast>
@@ -39,33 +53,34 @@ def send_notification(title: str, message: str) -> bool:
             $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
             [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("yadisk-downloader").Show($toast)
             """
-            subprocess.run(
+            result = subprocess.run(
                 ["powershell", "-Command", ps_cmd],
                 capture_output=True,
                 timeout=10,
             )
-            return True
+            return result.returncode == 0
 
         elif system == "Darwin":
             # macOS: use osascript
-            subprocess.run(
+            result = subprocess.run(
                 [
                     "osascript", "-e",
-                    f'display notification "{message}" with title "{title}"',
+                    f'display notification "{_applescript_escape(message)}" '
+                    f'with title "{_applescript_escape(title)}"',
                 ],
                 capture_output=True,
                 timeout=10,
             )
-            return True
+            return result.returncode == 0
 
         else:
-            # Linux: use notify-send
-            subprocess.run(
+            # Linux: use notify-send (arguments passed directly, no shell)
+            result = subprocess.run(
                 ["notify-send", title, message],
                 capture_output=True,
                 timeout=10,
             )
-            return True
+            return result.returncode == 0
 
     except Exception:
         return False

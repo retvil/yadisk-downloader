@@ -6,7 +6,7 @@ selects resolution, downloads .ts segments, and merges them into a single file.
 
 import os
 import re
-import ssl
+import shutil
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -165,18 +165,16 @@ def select_best_variant(variants: list[dict], target_height: int = 720) -> dict 
     return min(variants, key=lambda v: v["_height"] if v["_height"] > 0 else float("inf"))
 
 
-def fetch_url(url: str, timeout: int = 30) -> bytes:
+def fetch_url(url: str, timeout: int = 30, headers: dict | None = None) -> bytes:
     """Fetch URL content."""
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-
-    req = urllib.request.Request(url, headers={
+    req_headers = {
         "User-Agent": "Mozilla/5.0",
         "Accept": "*/*",
-    })
+        **(headers or {}),
+    }
+    req = urllib.request.Request(url, headers=req_headers)
 
-    with urllib.request.urlopen(req, context=ctx, timeout=timeout) as resp:
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
         return resp.read()
 
 
@@ -239,36 +237,46 @@ def download_hls_python(
         if os.path.exists(output_path):
             os.remove(output_path)
 
-        # Download segments in parallel
-        with ThreadPoolExecutor(max_workers=workers) as executor:
-            futures = {}
-            for i, segment in enumerate(playlist["segments"]):
-                future = executor.submit(
-                    _download_segment_to_temp,
-                    segment["url"],
-                    output_path,
-                    i,
-                )
-                futures[future] = i
+        # Segments are written to part files next to the output — the whole
+        # video must never be held in RAM (multi-GB streams would OOM)
+        parts_dir = (os.path.dirname(output_path) or ".") + os.sep + (
+            "." + os.path.basename(output_path) + ".hls_parts"
+        )
+        os.makedirs(parts_dir, exist_ok=True)
 
-            # Collect results in order
-            segment_data = [None] * total
-            for future in as_completed(futures):
-                idx = futures[future]
-                try:
-                    data = future.result()
-                    segment_data[idx] = data
-                except Exception:
-                    pass
-                downloaded += 1
-                if progress_callback:
-                    progress_callback(downloaded, total)
+        try:
+            # Download segments in parallel
+            with ThreadPoolExecutor(max_workers=workers) as executor:
+                futures = {}
+                for i, segment in enumerate(playlist["segments"]):
+                    future = executor.submit(
+                        _download_segment_to_temp,
+                        segment["url"],
+                        parts_dir,
+                        i,
+                    )
+                    futures[future] = i
 
-        # Step 5: Merge segments in order
-        with open(output_path, "wb") as f:
-            for data in segment_data:
-                if data:
-                    f.write(data)
+                # Collect results in order
+                segment_paths: list[str | None] = [None] * total
+                for future in as_completed(futures):
+                    idx = futures[future]
+                    try:
+                        segment_paths[idx] = future.result()
+                    except Exception:
+                        pass
+                    downloaded += 1
+                    if progress_callback:
+                        progress_callback(downloaded, total)
+
+            # Step 5: Merge segments in order, streaming from disk
+            with open(output_path, "wb") as f:
+                for part_path in segment_paths:
+                    if part_path and os.path.exists(part_path):
+                        with open(part_path, "rb") as part:
+                            shutil.copyfileobj(part, f)
+        finally:
+            shutil.rmtree(parts_dir, ignore_errors=True)
 
         if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
             return True, os.path.getsize(output_path)
@@ -278,12 +286,16 @@ def download_hls_python(
         return False, 0
 
 
-def _download_segment_to_temp(url: str, output_path: str, index: int) -> bytes:
-    """Download a segment and return its data."""
+def _download_segment_to_temp(url: str, parts_dir: str, index: int) -> str | None:
+    """Download a segment to a part file. Returns file path or None on failure."""
     try:
-        return fetch_url(url)
+        data = fetch_url(url)
+        path = os.path.join(parts_dir, f"seg_{index:06d}.ts")
+        with open(path, "wb") as f:
+            f.write(data)
+        return path
     except Exception:
-        return b""
+        return None
 
 
 def get_m3u8_info(m3u8_url: str) -> dict:

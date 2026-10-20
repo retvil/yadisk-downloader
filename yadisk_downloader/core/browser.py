@@ -89,9 +89,9 @@ def collect_m3u8_urls(
                 # Skip if already downloaded
                 m3u8_urls = []
 
-                def on_response(response):
+                def on_response(response, _urls=m3u8_urls):
                     if ".m3u8" in response.url:
-                        m3u8_urls.append(response.url)
+                        _urls.append(response.url)
 
                 page.on("response", on_response)
 

@@ -1,4 +1,9 @@
-"""Configuration file management for yadisk-downloader."""
+"""CLI configuration file management for yadisk-downloader.
+
+Flat, file-based config used by the CLI (``~/.yadisk-downloader/config.json``).
+Kept separate from the pydantic ``Settings`` in ``config/schema.py`` which is
+env-based and used by plugins/core.
+"""
 
 import json
 from dataclasses import asdict, dataclass
@@ -21,6 +26,7 @@ DEFAULT_CONFIG = {
 @dataclass
 class Config:
     """Application configuration."""
+
     resolution: str = "720p"
     output_dir: str = "./downloads"
     proxy: str | None = None

@@ -15,7 +15,7 @@ ROOT = Path(__file__).parent
 DIST = ROOT / "dist"
 BUILD = ROOT / "build"
 RELEASES = ROOT / "releases"
-VERSION = "1.1.0"
+VERSION = "1.3.0"
 ICON = ROOT / "yadisk_downloader" / "assets" / "icon.ico"
 
 
@@ -55,11 +55,11 @@ def build_windows():
         f"--distpath={DIST / 'windows'}",
         f"--workpath={BUILD / 'windows'}",
         f"--specpath={ROOT}",
-        "--hidden-import=customtkinter",
+        "--hidden-import=ttkbootstrap",
         "--hidden-import=requests",
         "--hidden-import=playwright",
         "--hidden-import=yadisk_downloader",
-        "--collect-all=customtkinter",
+        "--collect-all=ttkbootstrap",
         "--collect-all=imageio_ffmpeg",
         str(ROOT / "run.py"),
     ]
@@ -93,10 +93,10 @@ def build_macos():
         f"--distpath={DIST / 'macos'}",
         f"--workpath={BUILD / 'macos'}",
         f"--specpath={ROOT}",
-        "--hidden-import=customtkinter",
+        "--hidden-import=ttkbootstrap",
         "--hidden-import=requests",
         "--hidden-import=playwright",
-        "--collect-all=customtkinter",
+        "--collect-all=ttkbootstrap",
         "--collect-all=imageio_ffmpeg",
         str(ROOT / "run.py"),
     ]
@@ -128,10 +128,10 @@ def build_linux():
         f"--distpath={DIST / 'linux'}",
         f"--workpath={BUILD / 'linux'}",
         f"--specpath={ROOT}",
-        "--hidden-import=customtkinter",
+        "--hidden-import=ttkbootstrap",
         "--hidden-import=requests",
         "--hidden-import=playwright",
-        "--collect-all=customtkinter",
+        "--collect-all=ttkbootstrap",
         "--collect-all=imageio_ffmpeg",
         str(ROOT / "run.py"),
     ]
