@@ -18,6 +18,54 @@ RELEASES = ROOT / "releases"
 VERSION = "1.3.0"
 ICON = ROOT / "yadisk_downloader" / "assets" / "icon.ico"
 
+# Modules excluded from the bundle: not imported by yadisk_downloader, but
+# present in the build environment (transitive deps of other packages).
+# PyInstaller excludes are authoritative — nothing listed here gets collected.
+# NOTE: PIL/pillow must NOT be excluded (ttkbootstrap depends on it).
+EXCLUDED_MODULES = [
+    # ML / DL frameworks
+    "torch", "torchvision", "torchaudio", "tensorflow", "keras",
+    "paddle", "paddleocr", "catboost", "xgboost", "lightgbm",
+    "onnx", "onnxruntime", "bitsandbytes", "transformers", "diffusers",
+    "safetensors", "huggingface_hub", "triton", "sympy", "networkx",
+    # GPU / numeric
+    "cupy", "cupyx", "fastrlock", "llvmlite", "numba",
+    "numpy", "scipy", "sklearn", "pandas", "polars", "pyarrow",
+    "matplotlib", "cv2", "opencv", "openvino",
+    # unrelated heavy deps found in the environment
+    "yt_dlp", "curl_cffi", "websockets", "mutagen", "brotli",
+    "secretstorage", "patchright", "Cryptodome", "pycryptodome",
+    "IPython", "jupyter",
+    # NLP (spacy hook crashes PyInstaller child process with 0xC0000005)
+    "spacy", "thinc", "srsly", "catalogue", "weasel",
+    "en_core_web_sm", "en_core_web_md", "en_core_web_lg", "en_core_web_trf",
+    # geo / vector / misc heavy packages present in the environment
+    "psycopg2", "faiss", "faiss_cpu", "shapely", "pyproj", "pyogrio",
+    "geopandas", "fiona", "ctranslate2", "llama_cpp", "decord", "av",
+]
+
+
+# Packages removed from the bundle after PyInstaller finishes. None of them is
+# imported by yadisk_downloader (verified by grep); they get collected anyway
+# because third-party PyInstaller hooks (e.g. patchright masquerading as
+# playwright hooks) and binary dependency analysis pull them in.
+PRUNED_PACKAGES = [
+    "patchright", "bokeh", "litellm", "botocore", "selenium",
+    "plotly", "pymupdf", "granian", "grpc",
+]
+
+
+def prune_bundle(bundle_dir: Path):
+    """Remove known-unused packages from a PyInstaller onedir bundle."""
+    internal = bundle_dir / "_internal"
+    if not internal.exists():
+        return
+    for name in PRUNED_PACKAGES:
+        target = internal / name
+        if target.exists():
+            shutil.rmtree(target)
+            print(f"Pruned {name} from bundle")
+
 
 def clean():
     """Clean build directories."""
@@ -61,16 +109,23 @@ def build_windows():
         "--hidden-import=yadisk_downloader",
         "--collect-all=ttkbootstrap",
         "--collect-all=imageio_ffmpeg",
+        "--exclude-module=PyQt6",
+        "--exclude-module=PySide6",
+        *[f"--exclude-module={m}" for m in EXCLUDED_MODULES],
+        "--noconfirm",
         str(ROOT / "run.py"),
     ]
 
     print("Running PyInstaller...")
     subprocess.run(cmd, check=True)
 
+    # Remove packages that hooks/binary analysis pulled in but the app never imports
+    prune_bundle(DIST / "windows" / "yadisk-downloader")
+
     # Copy to releases
     exe_dir = DIST / "windows" / "yadisk-downloader"
     if exe_dir.exists():
-        shutil.copytree(exe_dir, release_dir / "yadisk-downloader-portable")
+        shutil.copytree(exe_dir, release_dir / "yadisk-downloader-portable", dirs_exist_ok=True)
 
     print(f"Windows build complete: {release_dir}")
 
@@ -98,6 +153,10 @@ def build_macos():
         "--hidden-import=playwright",
         "--collect-all=ttkbootstrap",
         "--collect-all=imageio_ffmpeg",
+        "--exclude-module=PyQt6",
+        "--exclude-module=PySide6",
+        *[f"--exclude-module={m}" for m in EXCLUDED_MODULES],
+        "--noconfirm",
         str(ROOT / "run.py"),
     ]
 
@@ -107,7 +166,7 @@ def build_macos():
     # Copy to releases
     app_dir = DIST / "macos" / "yadisk-downloader.app"
     if app_dir.exists():
-        shutil.copytree(app_dir, release_dir / "yadisk-downloader.app")
+        shutil.copytree(app_dir, release_dir / "yadisk-downloader.app", dirs_exist_ok=True)
 
     print(f"macOS build complete: {release_dir}")
 
@@ -133,16 +192,23 @@ def build_linux():
         "--hidden-import=playwright",
         "--collect-all=ttkbootstrap",
         "--collect-all=imageio_ffmpeg",
+        "--exclude-module=PyQt6",
+        "--exclude-module=PySide6",
+        *[f"--exclude-module={m}" for m in EXCLUDED_MODULES],
+        "--noconfirm",
         str(ROOT / "run.py"),
     ]
 
     print("Running PyInstaller...")
     subprocess.run(cmd, check=True)
 
+    # Remove packages that hooks/binary analysis pulled in but the app never imports
+    prune_bundle(DIST / "linux" / "yadisk-downloader")
+
     # Copy to releases
     bin_dir = DIST / "linux" / "yadisk-downloader"
     if bin_dir.exists():
-        shutil.copytree(bin_dir, release_dir / "yadisk-downloader-portable")
+        shutil.copytree(bin_dir, release_dir / "yadisk-downloader-portable", dirs_exist_ok=True)
 
     print(f"Linux build complete: {release_dir}")
 

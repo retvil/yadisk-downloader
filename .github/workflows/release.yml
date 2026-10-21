@@ -29,11 +29,11 @@ jobs:
             --windowed `
             --onedir `
             --icon=yadisk_downloader/assets/icon.ico `
-            --hidden-import=customtkinter `
+            --hidden-import=ttkbootstrap `
             --hidden-import=requests `
             --hidden-import=playwright `
             --hidden-import=yadisk_downloader `
-            --collect-all=customtkinter `
+            --collect-all=ttkbootstrap `
             --collect-all=imageio_ffmpeg `
             --add-data="yadisk_downloader/assets;yadisk_downloader/assets" `
             run.py
@@ -70,10 +70,10 @@ jobs:
             --name=yadisk-downloader \
             --windowed \
             --onedir \
-            --hidden-import=customtkinter \
+            --hidden-import=ttkbootstrap \
             --hidden-import=requests \
             --hidden-import=playwright \
-            --collect-all=customtkinter \
+            --collect-all=ttkbootstrap \
             --collect-all=imageio_ffmpeg \
             --add-data="yadisk_downloader/assets:yadisk_downloader/assets" \
             run.py
@@ -109,10 +109,10 @@ jobs:
           python -m PyInstaller \
             --name=yadisk-downloader \
             --onedir \
-            --hidden-import=customtkinter \
+            --hidden-import=ttkbootstrap \
             --hidden-import=requests \
             --hidden-import=playwright \
-            --collect-all=customtkinter \
+            --collect-all=ttkbootstrap \
             --collect-all=imageio_ffmpeg \
             --add-data="yadisk_downloader/assets:yadisk_downloader/assets" \
             run.py

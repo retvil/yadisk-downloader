@@ -32,6 +32,8 @@ venv/
 .hypothesis/
 *.spec
 releases/
+build_log*.txt
+build_err.txt
 yadisk-downloader-portable/
 yadisk-downloader.exe
 gui_screenshot*.png

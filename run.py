@@ -14,6 +14,10 @@ def main():
             sys.path.insert(0, internal_dir)
         if exe_dir not in sys.path:
             sys.path.insert(0, exe_dir)
+        # Portable exe launched by double-click (no args): open the GUI.
+        # CLI usage of the bundled exe stays available via explicit flags.
+        if len(sys.argv) == 1:
+            sys.argv.append("--gui")
 
     from yadisk_downloader.cli import main as cli_main
     cli_main()
