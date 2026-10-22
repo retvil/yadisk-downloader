@@ -67,14 +67,18 @@ jobs:
           $version = python -c "from build import VERSION; print(VERSION)"
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DBundleDir=dist/yadisk-downloader /DMyAppVersion=$version installer.iss
 
+      - name: Collect release files
+        run: |
+          New-Item -ItemType Directory -Path dist/release-assets
+          Move-Item dist/yadisk-downloader-windows.zip dist/release-assets/
+          Move-Item dist/yadisk-downloader-windows-onefile.exe dist/release-assets/
+          Move-Item releases/yadisk-downloader-*-windows-setup.exe dist/release-assets/
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows
-          path: |
-            dist/yadisk-downloader-windows.zip
-            dist/yadisk-downloader-windows-onefile.exe
-            releases/yadisk-downloader-*-windows-setup.exe
+          path: dist/release-assets/*
 
   build-macos:
     runs-on: macos-latest
