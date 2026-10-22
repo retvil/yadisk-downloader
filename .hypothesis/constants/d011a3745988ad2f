@@ -1,4 +1,0 @@
-# file: D:\ya-downloader\yadisk-downloader\yadisk_downloader\core\file_types.py
-# hypothesis_version: 6.151.11
-
-[', ', ', ...', '.7z', '.aac', '.apk', '.app', '.avi', '.bmp', '.bz2', '.csv', '.deb', '.dmg', '.doc', '.docx', '.exe', '.flac', '.flv', '.gif', '.gz', '.jpeg', '.jpg', '.m4a', '.m4v', '.mkv', '.mov', '.mp3', '.mp4', '.msi', '.odt', '.ogg', '.pdf', '.png', '.ppt', '.pptx', '.rar', '.rpm', '.rtf', '.svg', '.tar', '.tgz', '.tif', '.tiff', '.txt', '.wav', '.webm', '.webp', '.wma', '.wmv', '.xls', '.xlsx', '.xz', '.zip', 'archive', 'audio', 'document', 'executable', 'image', 'other', 'video']

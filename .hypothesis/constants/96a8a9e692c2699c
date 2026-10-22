@@ -1,4 +1,0 @@
-# file: D:\ya-downloader\yadisk-downloader\yadisk_downloader\core\safety.py
-# hypothesis_version: 6.151.11
-
-[1080, 8080, '://', '://[^:@]+:[^@]+@', 'host', 'http', 'https', 'password', 'port', 'scheme', 'socks4', 'socks5', 'username']
