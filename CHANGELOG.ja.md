@@ -11,6 +11,8 @@
 - **プレースホルダー** — 空のファイルリストとリンク入力欄のヒント
 - **ツールチップ** — 「元ファイルを削除」と変換プリセット用
 - **翻訳モジュール** — `translations.py`：37キー × 10言語、英語フォールバック、システム言語自動検出
+- **Windowsインストーラー** — Inno Setup（`yadisk-downloader-1.3.0-windows-setup.exe`）：ショートカット、アンインストーラー、ユーザーごと/コンピューターごとの選択
+- **Windows onefile ビルド** — `_internal` フォルダーなしの単一 exe（`yadisk-downloader-1.3.0-windows-onefile.exe`）
 
 ### 修正
 - **TLS検証** — すべてのHTTPリクエストで証明書チェックを有効化

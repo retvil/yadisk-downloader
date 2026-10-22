@@ -41,12 +41,40 @@ jobs:
       - name: Create portable zip
         run: |
           Compress-Archive -Path dist/yadisk-downloader -DestinationPath dist/yadisk-downloader-windows.zip
-      
+
+      - name: Build onefile exe
+        run: |
+          python -m PyInstaller `
+            --name=yadisk-downloader `
+            --windowed `
+            --onefile `
+            --icon=yadisk_downloader/assets/icon.ico `
+            --hidden-import=ttkbootstrap `
+            --hidden-import=requests `
+            --hidden-import=playwright `
+            --hidden-import=yadisk_downloader `
+            --collect-all=ttkbootstrap `
+            --collect-all=imageio_ffmpeg `
+            --add-data="yadisk_downloader/assets;yadisk_downloader/assets" `
+            --distpath=dist/onefile `
+            --workpath=build/onefile `
+            run.py
+          Move-Item dist/onefile/yadisk-downloader.exe dist/yadisk-downloader-windows-onefile.exe
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $version = python -c "from build import VERSION; print(VERSION)"
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DBundleDir=dist/yadisk-downloader /DMyAppVersion=$version installer.iss
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows
-          path: dist/yadisk-downloader-windows.zip
+          path: |
+            dist/yadisk-downloader-windows.zip
+            dist/yadisk-downloader-windows-onefile.exe
+            releases/yadisk-downloader-*-windows-setup.exe
 
   build-macos:
     runs-on: macos-latest
@@ -142,5 +170,7 @@ jobs:
           generate_release_notes: true
           files: |
             windows/yadisk-downloader-windows.zip
+            windows/yadisk-downloader-windows-onefile.exe
+            windows/yadisk-downloader-*-windows-setup.exe
             macos/yadisk-downloader-macos.zip
             linux/yadisk-downloader-linux.zip

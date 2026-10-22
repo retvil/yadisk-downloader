@@ -11,6 +11,8 @@
 - **佔位提示** — 空檔案列表與連結輸入欄的提示文字
 - **工具提示** — 「刪除原始檔」與轉換預設集的說明
 - **翻譯模組** — `translations.py`：37 個鍵 × 10 種語言，英文備援，自動偵測系統語言
+- **Windows 安裝程式** — Inno Setup（`yadisk-downloader-1.3.0-windows-setup.exe`）：捷徑、解除安裝程式、可選 per-user/per-machine
+- **Windows onefile 构建** — 單一 exe，無 `_internal` 資料夾（`yadisk-downloader-1.3.0-windows-onefile.exe`）
 
 ### 修復
 - **TLS 驗證** — 所有 HTTP 請求啟用憑證檢查

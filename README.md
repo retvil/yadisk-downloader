@@ -50,6 +50,8 @@
 Скачайте готовую сборку для вашей ОС из [Releases](https://github.com/retvil/yadisk-downloader/releases):
 
 - **Windows** — `yadisk-downloader-windows.zip` (portable)
+- **Windows** — `yadisk-downloader-1.3.0-windows-setup.exe` (установщик: ярлыки + деинсталлятор)
+- **Windows** — `yadisk-downloader-1.3.0-windows-onefile.exe` (один exe-файл без папки `_internal`; распаковывается при каждом запуске — старт медленнее, SmartScreen может предупредить о неподписанном файле)
 - **macOS** — `yadisk-downloader-macos.zip`
 - **Linux** — `yadisk-downloader-linux.zip`
 

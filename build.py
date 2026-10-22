@@ -4,6 +4,7 @@ Build script for yadisk-downloader.
 Creates distributable packages for Windows, macOS, and Linux.
 """
 
+import os
 import platform
 import shutil
 import subprocess
@@ -67,6 +68,23 @@ def prune_bundle(bundle_dir: Path):
             print(f"Pruned {name} from bundle")
 
 
+ISCC_CANDIDATES = [
+    Path(os.environ.get("PROGRAMFILES(X86)", "")) / "Inno Setup 6" / "ISCC.exe",
+    Path(os.environ.get("PROGRAMFILES", "")) / "Inno Setup 6" / "ISCC.exe",
+    Path.home() / "AppData" / "Local" / "Programs" / "Inno Setup 6" / "ISCC.exe",
+]
+
+
+def find_iscc() -> Path:
+    """Locate the Inno Setup command-line compiler."""
+    for candidate in ISCC_CANDIDATES:
+        if candidate.is_file():
+            return candidate
+    raise FileNotFoundError(
+        "ISCC.exe not found. Install Inno Setup 6: https://jrsoftware.org/isdl.php"
+    )
+
+
 def clean():
     """Clean build directories."""
     print("Cleaning build directories...")
@@ -128,6 +146,67 @@ def build_windows():
         shutil.copytree(exe_dir, release_dir / "yadisk-downloader-portable", dirs_exist_ok=True)
 
     print(f"Windows build complete: {release_dir}")
+
+
+def build_windows_onefile():
+    """Build a single-file Windows executable (self-extracting, no _internal)."""
+    print("\n" + "=" * 60)
+    print("Building Windows onefile...")
+    print("=" * 60)
+
+    cmd = [
+        sys.executable, "-m", "PyInstaller",
+        "--name=yadisk-downloader",
+        "--windowed",  # No console window
+        "--onefile",  # Single self-extracting exe
+        f"--icon={ICON}",
+        f"--distpath={DIST / 'windows-onefile'}",
+        f"--workpath={BUILD / 'windows-onefile'}",
+        f"--specpath={ROOT}",
+        "--hidden-import=ttkbootstrap",
+        "--hidden-import=requests",
+        "--hidden-import=playwright",
+        "--hidden-import=yadisk_downloader",
+        "--collect-all=ttkbootstrap",
+        "--collect-all=imageio_ffmpeg",
+        "--exclude-module=PyQt6",
+        "--exclude-module=PySide6",
+        # onefile has no _internal dir, so prune_bundle() cannot run — the
+        # hook/binary-analysis junk must be excluded at collection time instead.
+        *[f"--exclude-module={m}" for m in EXCLUDED_MODULES + PRUNED_PACKAGES],
+        "--noconfirm",
+        str(ROOT / "run.py"),
+    ]
+
+    print("Running PyInstaller...")
+    subprocess.run(cmd, check=True)
+
+    exe = DIST / "windows-onefile" / "yadisk-downloader.exe"
+    if exe.exists():
+        target = RELEASES / f"yadisk-downloader-{VERSION}-windows-onefile.exe"
+        shutil.copy2(exe, target)
+        print(f"Onefile build complete: {target}")
+
+
+def build_installer():
+    """Compile the Windows installer with Inno Setup (requires onedir build)."""
+    bundle = DIST / "windows" / "yadisk-downloader"
+    if not bundle.exists():
+        raise FileNotFoundError(
+            f"{bundle} not found — run the Windows onedir build first"
+        )
+
+    print("\n" + "=" * 60)
+    print("Building Windows installer...")
+    print("=" * 60)
+
+    iscc = find_iscc()
+    subprocess.run(
+        [str(iscc), f"/DBundleDir={bundle}", f"/DMyAppVersion={VERSION}",
+         str(ROOT / "installer.iss")],
+        check=True,
+    )
+    print(f"Installer build complete: {RELEASES}")
 
 
 def build_macos():
@@ -236,6 +315,10 @@ def main():
     parser.add_argument("--platform", choices=["windows", "macos", "linux", "all"], default="all")
     parser.add_argument("--clean", action="store_true")
     parser.add_argument("--skip-deps", action="store_true")
+    parser.add_argument("--onefile", action="store_true",
+                        help="Also build a single-file Windows exe")
+    parser.add_argument("--installer", action="store_true",
+                        help="Also build the Windows installer (Inno Setup)")
     args = parser.parse_args()
 
     if args.clean:
@@ -258,6 +341,10 @@ def main():
     if system == "windows":
         build_windows()
         create_zip("windows")
+        if args.onefile:
+            build_windows_onefile()
+        if args.installer:
+            build_installer()
     elif system == "macos":
         build_macos()
         create_zip("macos")

@@ -11,6 +11,8 @@
 - **Platzhalter** — Hinweise in der leeren Dateiliste und im Link-Eingabefeld
 - **Tooltips** — für „Original löschen" und Konvertierungspreset
 - **Übersetzungsmodul** — `translations.py`: 37 Schlüssel × 10 Sprachen, Englisch-Fallback, automatische Spracherkennung
+- **Windows-Installer** — Inno Setup (`yadisk-downloader-1.3.0-windows-setup.exe`): Verknüpfungen, Deinstaller, Wahl zwischen pro Benutzer/pro Computer
+- **Windows-Onefile-Build** — einzelne EXE ohne den Ordner `_internal` (`yadisk-downloader-1.3.0-windows-onefile.exe`)
 
 ### Behoben
 - **TLS-Verifizierung** — Zertifikatsprüfung in allen HTTP-Anfragen aktiviert
